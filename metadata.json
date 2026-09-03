@@ -1,0 +1,6 @@
+{
+  "name": "Repetitor Jurnalı",
+  "description": "Repetitorlar üçün qruplar, şagird siyahısı, davamiyyət və aylıq ödəniş izləmə sistemi",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,126 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Information about the tutor user",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid"]
+    },
+    "Group": {
+      "title": "Group",
+      "description": "Student group created by the tutor",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "schedule": { "type": "string" },
+        "defaultMonthlyFee": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "name"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Student enrolled in a group",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "groupId": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "monthlyFee": { "type": "number" },
+        "notes": { "type": "string" },
+        "enrollmentDate": { "type": "string" },
+        "paymentDueDay": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "groupId", "name", "monthlyFee"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Payment record for a student",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "groupId": { "type": "string" },
+        "amount": { "type": "number" },
+        "paymentDate": { "type": "string" },
+        "forMonth": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "studentId", "amount", "paymentDate", "forMonth"]
+    },
+    "Attendance": {
+      "title": "Attendance",
+      "description": "Daily attendance record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "groupId": { "type": "string" },
+        "date": { "type": "string" },
+        "status": { "type": "string" },
+        "note": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "studentId", "groupId", "date", "status"]
+    },
+    "StudentNote": {
+      "title": "Student Note",
+      "description": "Pedagogical or personal note for a student",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "category": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "studentId", "content", "category"]
+    }
+  },
+  "firestore": {
+    "collections": {
+      "users": {
+        "entity": "UserProfile",
+        "description": "User profile records",
+        "access": "ownerOnly"
+      },
+      "groups": {
+        "entity": "Group",
+        "description": "Student groups",
+        "access": "ownerOnly"
+      },
+      "students": {
+        "entity": "Student",
+        "description": "Enrolled students",
+        "access": "ownerOnly"
+      },
+      "payments": {
+        "entity": "Payment",
+        "description": "Payment records",
+        "access": "ownerOnly"
+      },
+      "attendance": {
+        "entity": "Attendance",
+        "description": "Attendance records",
+        "access": "ownerOnly"
+      },
+      "studentNotes": {
+        "entity": "StudentNote",
+        "description": "Student notes",
+        "access": "ownerOnly"
+      }
+    }
+  }
+}

@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // User profile
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Groups
+    match /groups/{groupId} {
+      allow read, write, delete: if isAuthenticated();
+    }
+
+    // Students
+    match /students/{studentId} {
+      allow read, write, delete: if isAuthenticated();
+    }
+
+    // Payments
+    match /payments/{paymentId} {
+      allow read, write, delete: if isAuthenticated();
+    }
+
+    // Attendance
+    match /attendance/{attendanceId} {
+      allow read, write, delete: if isAuthenticated();
+    }
+
+    // Student Notes
+    match /studentNotes/{noteId} {
+      allow read, write, delete: if isAuthenticated();
+    }
+  }
+}
