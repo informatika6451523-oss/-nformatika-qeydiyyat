@@ -56,7 +56,6 @@ interface StudentsPaymentsViewProps {
   onUpdateStudentFee: (studentId: string, newFee: number) => void;
   onDeleteStudent: (studentId: string) => void;
   onDeletePayment: (paymentId: string) => void;
-  onOpenReportModal?: () => void;
 }
 
 export const StudentsPaymentsView: React.FC<StudentsPaymentsViewProps> = ({
@@ -80,7 +79,6 @@ export const StudentsPaymentsView: React.FC<StudentsPaymentsViewProps> = ({
   onUpdateStudentFee,
   onDeleteStudent,
   onDeletePayment,
-  onOpenReportModal,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'due' | 'overdue'>('all');
@@ -316,20 +314,8 @@ export const StudentsPaymentsView: React.FC<StudentsPaymentsViewProps> = ({
           </div>
         </div>
 
-        {/* Buttons: Hesabat + Yeni Şagird */}
+        {/* Buttons: Yeni Şagird */}
         <div className="flex items-center gap-2.5 shrink-0">
-          {onOpenReportModal && (
-            <button
-              id="view-group-report-btn"
-              onClick={onOpenReportModal}
-              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3.5 py-2.5 text-sm font-semibold text-slate-700 shadow-2xs active:scale-[0.99] transition-all cursor-pointer"
-              title="Qruplar və şagirdlər üzrə PDF və Word hesabatı çıxar"
-            >
-              <FileText className="h-4 w-4 text-blue-600" />
-              <span>Hesabat</span>
-            </button>
-          )}
-
           <button
             id="add-new-student-btn"
             onClick={onOpenNewStudentModal}

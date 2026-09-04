@@ -15,7 +15,6 @@ import { PaymentReminderModal } from './components/PaymentReminderModal';
 import { EditStudentModal } from './components/EditStudentModal';
 import { QuickDateEditModal } from './components/QuickDateEditModal';
 import { CloudAccountModal } from './components/CloudAccountModal';
-import { ReportModal } from './components/ReportModal';
 import {
   Group,
   Student,
@@ -26,7 +25,14 @@ import {
   NoteCategory,
   StudentNote,
 } from './types';
-import { loadAppData, saveAppData, AppData } from './utils/storage';
+import {
+  loadAppData,
+  saveAppData,
+  getRecoverableBackups,
+  isDefaultDataset,
+  type RecoverableBackup,
+  type AppData,
+} from './utils/storage';
 import { getCurrentMonthString, getTodayDateString } from './utils/dateUtils';
 import { type User, onAuthStateChanged } from 'firebase/auth';
 import {
@@ -45,7 +51,7 @@ import {
   cloudSaveNote,
   cloudDeleteNote,
 } from './utils/firebase';
-import { Users, Plus, BookOpen, Sparkles, FileText } from 'lucide-react';
+import { Users, Plus, BookOpen, Sparkles, History } from 'lucide-react';
 
 export default function App() {
   const [data, setData] = useState<AppData>(() => loadAppData());
@@ -61,6 +67,31 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'error'>('synced');
   const [lastSyncedTime, setLastSyncedTime] = useState<string>('İndi');
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
+  const [recoverableBackupFound, setRecoverableBackupFound] = useState<RecoverableBackup | null>(null);
+
+  // Check for recoverable backups from previous sessions / keys
+  useEffect(() => {
+    try {
+      const backups = getRecoverableBackups();
+      const realBackup = backups.find(
+        (b) => !isDefaultDataset(b.data) && (b.data.students.length > 0 || b.data.groups.length > 0)
+      );
+      if (realBackup) {
+        if (isDefaultDataset(data)) {
+          // Current state only has demo data -> Automatically restore real user data!
+          setData(realBackup.data);
+          saveAppData(realBackup.data);
+          if (realBackup.data.groups.length > 0) {
+            setSelectedGroupId(realBackup.data.groups[0].id);
+          }
+        } else {
+          setRecoverableBackupFound(realBackup);
+        }
+      }
+    } catch (err) {
+      console.warn('Ehtiyat məlumat yoxlanışı:', err);
+    }
+  }, []);
 
   // Modals state
   const [isNewGroupModalOpen, setIsNewGroupModalOpen] = useState(false);
@@ -71,7 +102,6 @@ export default function App() {
   const [reminderModalStudent, setReminderModalStudent] = useState<Student | null>(null);
   const [editStudentModalStudent, setEditStudentModalStudent] = useState<Student | null>(null);
   const [quickDateModalStudent, setQuickDateModalStudent] = useState<Student | null>(null);
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Firebase Auth listener
@@ -464,6 +494,32 @@ export default function App() {
     }
   };
 
+  const handleForceSyncUp = async () => {
+    if (!user) return;
+    setSyncStatus('syncing');
+    try {
+      await uploadLocalDataToCloud(user.uid, data);
+      setSyncStatus('synced');
+      const now = new Date();
+      setLastSyncedTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+    } catch (err) {
+      console.error('Buluda yükləmə xətası:', err);
+      setSyncStatus('error');
+    }
+  };
+
+  const handleRestoreData = (restored: AppData) => {
+    setData(restored);
+    saveAppData(restored);
+    setRecoverableBackupFound(null);
+    if (user) {
+      uploadLocalDataToCloud(user.uid, restored);
+    }
+    if (restored.groups.length > 0) {
+      setSelectedGroupId(restored.groups[0].id);
+    }
+  };
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50 font-sans text-slate-900">
       {/* Left Sidebar - Groups list */}
@@ -480,12 +536,11 @@ export default function App() {
         user={user}
         syncStatus={syncStatus}
         onOpenCloudModal={() => setIsCloudModalOpen(true)}
-        onOpenReportModal={() => setIsReportModalOpen(true)}
       />
 
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col overflow-y-auto">
-        {/* Banner shown if user has not yet signed in with Google */}
+        {/* Banner shown if user has not yet signed in */}
         {!user && (
           <div
             id="cloud-sync-reminder-banner"
@@ -496,8 +551,8 @@ export default function App() {
                 !
               </span>
               <p className="leading-snug">
-                <strong>Telefonlar arasında eyni qeydləri görmək üçün:</strong> Hər iki telefonda{' '}
-                <strong>informatika6451523@gmail.com</strong> Google hesabı ilə daxil olun.
+                <strong>Telefon və kompüter arasında eyni qeydləri saxlamaq üçün:</strong>{' '}
+                <strong>informatika6451523@gmail.com</strong> hesabı ilə daxil olun.
               </p>
             </div>
             <button
@@ -507,6 +562,39 @@ export default function App() {
             >
               Daxil Ol
             </button>
+          </div>
+        )}
+
+        {/* Banner for Recoverable Data from Old Sessions */}
+        {recoverableBackupFound && (
+          <div
+            id="recoverable-data-banner"
+            className="bg-purple-500/10 border-b border-purple-200 px-4 py-2.5 sm:px-6 flex items-center justify-between text-xs text-purple-950 shrink-0"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-200 text-purple-900 font-bold text-[11px]">
+                <History className="h-3.5 w-3.5" />
+              </span>
+              <p className="leading-snug">
+                <strong>Köhnə şagirdləriniz aşkarlandı:</strong> Brauzer yaddaşında {recoverableBackupFound.studentCount} şagird və {recoverableBackupFound.groupCount} qrup məlumatı tapıldı ({recoverableBackupFound.studentNames.slice(0, 3).join(', ')}...).
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleRestoreData(recoverableBackupFound.data)}
+                className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 shadow-xs transition-colors cursor-pointer"
+              >
+                Köhnəni Bərpa Et
+              </button>
+              <button
+                type="button"
+                onClick={() => setRecoverableBackupFound(null)}
+                className="text-purple-600 hover:text-purple-800 text-xs px-2 py-1 cursor-pointer"
+              >
+                Gizlət
+              </button>
+            </div>
           </div>
         )}
 
@@ -523,7 +611,6 @@ export default function App() {
               user={user}
               syncStatus={syncStatus}
               onOpenCloudModal={() => setIsCloudModalOpen(true)}
-              onOpenReportModal={() => setIsReportModalOpen(true)}
             />
 
             {/* Tab Views */}
@@ -550,7 +637,6 @@ export default function App() {
                   onUpdateStudentFee={handleUpdateStudentFee}
                   onDeleteStudent={handleDeleteStudent}
                   onDeletePayment={handleDeletePayment}
-                  onOpenReportModal={() => setIsReportModalOpen(true)}
                 />
               )}
 
@@ -594,15 +680,6 @@ export default function App() {
                   <Plus className="h-4 w-4" />
                   <span>Yeni Qrup Yarat</span>
                 </button>
-                {data.groups.length > 0 && (
-                  <button
-                    onClick={() => setIsReportModalOpen(true)}
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
-                  >
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    <span>Hesabat Mərkəzi</span>
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -690,16 +767,9 @@ export default function App() {
         lastSyncedTime={lastSyncedTime}
         appData={data}
         onRefreshData={handleRefreshData}
-      />
-
-      <ReportModal
-        isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        groups={data.groups}
-        students={data.students}
-        payments={data.payments}
-        initialGroupId={selectedGroupId}
-        initialMonth={selectedMonth}
+        onForceSyncUp={handleForceSyncUp}
+        onForceSyncDown={handleRefreshData}
+        onRestoreData={handleRestoreData}
       />
     </div>
   );

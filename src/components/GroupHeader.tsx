@@ -26,7 +26,6 @@ interface GroupHeaderProps {
   user: User | null;
   syncStatus: 'syncing' | 'synced' | 'error';
   onOpenCloudModal: () => void;
-  onOpenReportModal?: () => void;
 }
 
 export const GroupHeader: React.FC<GroupHeaderProps> = ({
@@ -39,7 +38,6 @@ export const GroupHeader: React.FC<GroupHeaderProps> = ({
   user,
   syncStatus,
   onOpenCloudModal,
-  onOpenReportModal,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState(group.name);
@@ -129,18 +127,6 @@ export const GroupHeader: React.FC<GroupHeaderProps> = ({
 
         {/* Right: Actions & Cloud Sync Status */}
         <div className="flex items-center gap-2.5 self-end sm:self-center">
-          {onOpenReportModal && (
-            <button
-              id="header-open-report-btn"
-              onClick={onOpenReportModal}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors cursor-pointer"
-              title="Şagird və ödəniş hesabatını çıxar"
-            >
-              <FileText className="h-3.5 w-3.5 text-blue-600" />
-              <span>Hesabat</span>
-            </button>
-          )}
-
           <button
             onClick={onOpenCloudModal}
             className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors cursor-pointer border ${

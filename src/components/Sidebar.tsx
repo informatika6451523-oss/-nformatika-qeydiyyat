@@ -30,7 +30,6 @@ interface SidebarProps {
   user: User | null;
   syncStatus: 'syncing' | 'synced' | 'error';
   onOpenCloudModal: () => void;
-  onOpenReportModal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -46,7 +45,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   user,
   syncStatus,
   onOpenCloudModal,
-  onOpenReportModal,
 }) => {
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -256,23 +254,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             );
           })
-        )}
-      </div>
-
-      {/* Footer Navigation: Hesabat Mərkəzi */}
-      <div className="p-3 border-t border-slate-800 bg-slate-950/40 space-y-1.5">
-        {onOpenReportModal && (
-          <button
-            id="sidebar-open-report-btn"
-            onClick={onOpenReportModal}
-            className="flex w-full items-center gap-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 px-3.5 py-2.5 text-xs font-semibold transition-colors cursor-pointer"
-          >
-            <FileText className="h-4 w-4 text-blue-400" />
-            <div className="text-left flex-1">
-              <div className="text-white font-bold">Hesabat Mərkəzi</div>
-              <div className="text-[10px] text-blue-300/80">PDF və Word hesabatı çıxar</div>
-            </div>
-          </button>
         )}
       </div>
     </div>

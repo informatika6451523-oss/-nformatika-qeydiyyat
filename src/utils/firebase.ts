@@ -3,6 +3,10 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInAnonymously,
+  updateProfile,
   signOut,
   type User,
 } from 'firebase/auth';
@@ -17,24 +21,57 @@ import {
 } from 'firebase/firestore';
 import { AppData } from './storage';
 import { Group, Student, PaymentRecord, AttendanceRecord, StudentNote } from '../types';
+import firebaseConfigData from '../../firebase-applet-config.json';
 
 const env = (import.meta as any).env || {};
 
 const firebaseConfig = {
-  apiKey: env.VITE_FIREBASE_API_KEY || 'AIzaSyA_DEMO_KEY_TEACHER_JOURNAL_APP',
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || 'teacher-journal-az.firebaseapp.com',
-  projectId: env.VITE_FIREBASE_PROJECT_ID || 'teacher-journal-az',
-  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || 'teacher-journal-az.appspot.com',
-  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || '1234567890',
-  appId: env.VITE_FIREBASE_APP_ID || '1:1234567890:web:abcdef123456',
+  apiKey: env.VITE_FIREBASE_API_KEY || firebaseConfigData.apiKey,
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigData.authDomain,
+  projectId: env.VITE_FIREBASE_PROJECT_ID || firebaseConfigData.projectId,
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigData.storageBucket,
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigData.messagingSenderId,
+  appId: env.VITE_FIREBASE_APP_ID || firebaseConfigData.appId,
 };
 
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+export const db =
+  firebaseConfigData.firestoreDatabaseId && firebaseConfigData.firestoreDatabaseId !== '(default)'
+    ? getFirestore(app, firebaseConfigData.firestoreDatabaseId)
+    : getFirestore(app);
 
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+export function getFirebaseAuthErrorMessage(error: any): string {
+  const code = error?.code || '';
+  if (code === 'auth/unauthorized-domain') {
+    return 'Bu preview domen Firebase OAuth siyahısında təsdiqlənməyib. Zəhmət olmasa aşağıdakı "E-poçt / Şifrə ilə Giriş" bölməsindən istifadə edin və ya tətbiqi yeni pəncərədə açın.';
+  }
+  if (code === 'auth/popup-blocked') {
+    return 'Brauzer və ya iframe giriş pəncərəsini (popup) blokladı. Zəhmət olmasa E-poçt / Şifrə ilə daxil olun və ya tətbiqi yeni tabda açın.';
+  }
+  if (code === 'auth/operation-not-allowed') {
+    return 'Google ilə giriş Firebase idarəetmə panelində aktiv edilməyib. Zəhmət olmasa E-poçt və Şifrə ilə daxil olun.';
+  }
+  if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+    return 'Daxil edilən e-poçt və ya şifrə yalnışdır. Əgər hesabınız yoxdursa, "Qeydiyyat" seçin.';
+  }
+  if (code === 'auth/email-already-in-use') {
+    return 'Bu e-poçt ünvanı ilə artıq qeydiyyatdan keçilib. "Daxil ol" düyməsindən istifadə edin.';
+  }
+  if (code === 'auth/weak-password') {
+    return 'Şifrə ən azı 6 simvoldan ibarət olmalıdır.';
+  }
+  if (code === 'auth/invalid-email') {
+    return 'Zəhmət olmasa düzgün e-poçt ünvanı daxil edin.';
+  }
+  if (code === 'auth/popup-closed-by-user') {
+    return 'Giriş pəncərəsi tamamlanmadan bağlandı.';
+  }
+  return error?.message || 'Daxil olarkən xəta baş verdi. Zəhmət olmasa yenidən cəhd edin.';
+}
 
 export async function signInWithGoogle(): Promise<User | null> {
   try {
@@ -42,6 +79,42 @@ export async function signInWithGoogle(): Promise<User | null> {
     return result.user;
   } catch (error) {
     console.error('Google ilə daxil olma xətası:', error);
+    throw error;
+  }
+}
+
+export async function signInWithEmail(email: string, pass: string): Promise<User | null> {
+  try {
+    const res = await signInWithEmailAndPassword(auth, email.trim(), pass);
+    return res.user;
+  } catch (error) {
+    console.error('Email ilə daxil olma xətası:', error);
+    throw error;
+  }
+}
+
+export async function signUpWithEmail(email: string, pass: string, teacherName?: string): Promise<User | null> {
+  try {
+    const res = await createUserWithEmailAndPassword(auth, email.trim(), pass);
+    if (teacherName && res.user) {
+      await updateProfile(res.user, { displayName: teacherName.trim() });
+    }
+    return res.user;
+  } catch (error) {
+    console.error('Email ilə qeydiyyat xətası:', error);
+    throw error;
+  }
+}
+
+export async function signInAsGuestTeacher(displayName?: string): Promise<User | null> {
+  try {
+    const res = await signInAnonymously(auth);
+    if (displayName && res.user) {
+      await updateProfile(res.user, { displayName: displayName.trim() });
+    }
+    return res.user;
+  } catch (error) {
+    console.error('Anonim giriş xətası:', error);
     throw error;
   }
 }
