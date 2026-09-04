@@ -1,119 +1,92 @@
-import React, { useState } from 'react';
-import { X, Calendar, Trash2, Receipt, AlertCircle } from 'lucide-react';
+import React from 'react';
+import { X, History, Trash2 } from 'lucide-react';
 import { Student, PaymentRecord } from '../types';
 import { formatFullDateAZ, formatMonthName } from '../utils/dateUtils';
-import { ConfirmDialogModal } from './ConfirmDialogModal';
 
 interface StudentPaymentHistoryModalProps {
   isOpen: boolean;
+  onClose: () => void;
   student: Student | null;
   payments: PaymentRecord[];
-  onClose: () => void;
   onDeletePayment: (paymentId: string) => void;
 }
 
 export const StudentPaymentHistoryModal: React.FC<StudentPaymentHistoryModalProps> = ({
   isOpen,
+  onClose,
   student,
   payments,
-  onClose,
   onDeletePayment,
 }) => {
-  const [paymentToDeleteId, setPaymentToDeleteId] = useState<string | null>(null);
-
   if (!isOpen || !student) return null;
 
   const studentPayments = payments
     .filter((p) => p.studentId === student.id)
-    .sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
+    .sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
 
-  const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
+  const totalPaid = studentPayments.reduce((acc, p) => acc + p.amount, 0);
 
   return (
-    <div
-      id="payment-history-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs"
-      onClick={onClose}
-    >
-      <div
-        id="payment-history-modal-card"
-        className="w-full max-w-lg rounded-2xl bg-white p-6 sm:p-7 shadow-2xl border border-slate-100 max-h-[85vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
-              <Receipt className="h-5 w-5" />
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+              <History className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 tracking-tight">Ödəniş Tarixçəsi</h2>
-              <p className="text-xs text-slate-500 font-semibold">
-                {student.name} • <span className="text-slate-600">Aylıq haqq: {student.monthlyFee} AZN</span>
-              </p>
+              <h3 className="text-base font-bold text-slate-900">Ödəniş Tarixçəsi</h3>
+              <p className="text-xs text-slate-500">{student.name}</p>
             </div>
           </div>
           <button
-            id="close-history-modal-btn"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
+            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Stats summary */}
-        <div className="my-4 flex items-center justify-between rounded-xl bg-slate-50/80 p-4 border border-slate-200/70">
-          <div>
-            <span className="text-xs font-semibold text-slate-500">Ümumi Ödənilmiş Məbləğ:</span>
-            <p className="text-xl font-bold text-emerald-700 mt-0.5">{totalPaid} AZN</p>
-          </div>
-          <div className="text-right">
-            <span className="text-xs font-semibold text-slate-500">Ödəniş Sayı:</span>
-            <p className="text-xl font-bold text-slate-800 mt-0.5">{studentPayments.length} dəfə</p>
-          </div>
+        <div className="mt-4 flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+          <span className="text-xs text-slate-600 font-medium">Toplam Ödənilən:</span>
+          <span className="text-base font-bold text-emerald-700">{totalPaid} AZN</span>
         </div>
 
-        {/* History List */}
-        <div className="flex-1 overflow-y-auto pr-1 space-y-2.5">
+        <div className="mt-4 max-h-80 overflow-y-auto space-y-2">
           {studentPayments.length === 0 ? (
-            <div className="py-12 text-center text-slate-400">
-              <AlertCircle className="mx-auto h-8 w-8 text-slate-300 mb-2" />
-              <p className="text-sm font-medium">Hələ ki, heç bir ödəniş qeyd olunmayıb</p>
+            <div className="py-10 text-center text-xs text-slate-400">
+              Bu şagird üçün hələ heç bir ödəniş qeyd edilməyib.
             </div>
           ) : (
             studentPayments.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white p-3.5 hover:border-slate-300 shadow-xs transition-colors"
+                className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200/80 hover:bg-slate-50/80 transition-colors"
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
-                      +{p.amount} AZN
+                    <span className="text-xs font-bold text-slate-900">
+                      {formatMonthName(p.forMonth)}
                     </span>
-                    <span className="text-xs font-bold text-slate-800">
-                      {formatMonthName(p.forMonth)} üçün
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                      {p.amount} AZN
                     </span>
                   </div>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-                    <div className="flex items-center gap-1 font-medium text-slate-600">
-                      <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                      <span>{formatFullDateAZ(p.paymentDate)}</span>
-                    </div>
-                    {p.paymentMethod && (
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase font-semibold text-slate-600">
-                        {p.paymentMethod === 'cash' ? 'Nağd' : p.paymentMethod === 'm10' ? 'M10/Kart' : 'Köçürmə'}
-                      </span>
-                    )}
+                  <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-2">
+                    <span>Tarix: {formatFullDateAZ(p.paymentDate)}</span>
+                    {p.receiptNumber && <span>• Qəbz: {p.receiptNumber}</span>}
+                    {p.note && <span>• {p.note}</span>}
                   </div>
-                  {p.note && <p className="mt-1 text-[11px] text-slate-500 italic">Qeyd: {p.note}</p>}
                 </div>
 
                 <button
-                  onClick={() => setPaymentToDeleteId(p.id)}
+                  onClick={() => {
+                    if (window.confirm('Bu ödəniş qeydini silmək istədiyinizə əminsiniz?')) {
+                      onDeletePayment(p.id);
+                    }
+                  }}
+                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                   title="Ödənişi sil"
-                  className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -122,31 +95,15 @@ export const StudentPaymentHistoryModal: React.FC<StudentPaymentHistoryModalProp
           )}
         </div>
 
-        <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+        <div className="mt-5 pt-3 border-t border-slate-100 flex justify-end">
           <button
             onClick={onClose}
-            className="rounded-xl bg-slate-100 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
           >
             Bağla
           </button>
         </div>
       </div>
-
-      <ConfirmDialogModal
-        isOpen={paymentToDeleteId !== null}
-        title="Ödənişi silmək istəyirsiniz?"
-        message="Bu ödəniş qeydini silmək istədiyinizə əminsiniz?"
-        confirmText="Ödənişi Sil"
-        cancelText="İmtina et"
-        variant="danger"
-        onConfirm={() => {
-          if (paymentToDeleteId) {
-            onDeletePayment(paymentToDeleteId);
-            setPaymentToDeleteId(null);
-          }
-        }}
-        onClose={() => setPaymentToDeleteId(null)}
-      />
     </div>
   );
 };

@@ -1,34 +1,36 @@
 import React, { useState } from 'react';
 import {
-  Users,
+  BookOpen,
   Plus,
+  Users,
+  MoreVertical,
   Edit2,
   Trash2,
   Check,
   X,
-  Search,
-  BookOpen,
-  GraduationCap,
-  Sparkles,
+  Cloud,
+  CloudOff,
+  RefreshCw,
+  FileText,
+  Calendar,
 } from 'lucide-react';
 import { Group, Student } from '../types';
 import { type User } from 'firebase/auth';
-import { CloudSyncBadge } from './CloudSyncBadge';
-import { ConfirmDialogModal } from './ConfirmDialogModal';
 
 interface SidebarProps {
   groups: Group[];
   students: Student[];
   selectedGroupId: string | null;
-  onSelectGroup: (groupId: string) => void;
+  onSelectGroup: (id: string) => void;
   onOpenNewGroupModal: () => void;
   onRenameGroup: (groupId: string, newName: string) => void;
   onDeleteGroup: (groupId: string) => void;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
-  user?: User | null;
-  syncStatus?: 'syncing' | 'synced' | 'error';
-  onOpenCloudModal?: () => void;
+  user: User | null;
+  syncStatus: 'syncing' | 'synced' | 'error';
+  onOpenCloudModal: () => void;
+  onOpenReportModal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -42,294 +44,257 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
   user,
-  syncStatus = 'synced',
+  syncStatus,
   onOpenCloudModal,
+  onOpenReportModal,
 }) => {
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
-  const [tempGroupName, setTempGroupName] = useState('');
-  const [groupSearch, setGroupSearch] = useState('');
-  const [groupToDelete, setGroupToDelete] = useState<Group | null>(null);
+  const [editName, setEditName] = useState('');
+  const [activeMenuGroupId, setActiveMenuGroupId] = useState<string | null>(null);
 
-  const filteredGroups = groups.filter((g) =>
-    g.name.toLowerCase().includes(groupSearch.toLowerCase())
-  );
-
-  const startRename = (group: Group, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingGroupId(group.id);
-    setTempGroupName(group.name);
+  const startRename = (grp: Group) => {
+    setEditingGroupId(grp.id);
+    setEditName(grp.name);
+    setActiveMenuGroupId(null);
   };
 
-  const saveRename = (groupId: string, e: React.MouseEvent | React.KeyboardEvent) => {
-    e.stopPropagation();
-    if (tempGroupName.trim()) {
-      onRenameGroup(groupId, tempGroupName.trim());
+  const handleSaveRename = (grpId: string) => {
+    if (editName.trim()) {
+      onRenameGroup(grpId, editName.trim());
     }
     setEditingGroupId(null);
   };
 
-  const cancelRename = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleCancelRename = () => {
     setEditingGroupId(null);
-    setTempGroupName('');
+    setEditName('');
   };
 
-  const handleDelete = (group: Group, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setGroupToDelete(group);
-  };
-
-  const content = (
-    <div className="flex h-full w-72 flex-col bg-slate-900 text-slate-100 border-r border-slate-800 selection:bg-blue-600 selection:text-white">
-      {/* App Branding */}
-      <div className="flex items-center justify-between px-5 py-5 border-b border-slate-800">
+  const sidebarContent = (
+    <div className="flex h-full flex-col bg-slate-900 text-slate-100 w-72 sm:w-80 shrink-0 select-none border-r border-slate-800">
+      {/* Brand Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-950/40">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-md shadow-blue-500/20 ring-1 ring-white/10">
-            <GraduationCap className="h-5 w-5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-500/20">
+            <BookOpen className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-white tracking-tight">Repetitor Jurnalı</h1>
-            <p className="text-[11px] font-medium text-slate-400">Tədris & Ödəniş Sistemi</p>
+            <h1 className="text-sm font-bold tracking-tight text-white">
+              Müəllim Jurnalı
+            </h1>
+            <p className="text-[11px] text-slate-400">Şagird və Ödəniş Sistemi</p>
           </div>
         </div>
+
         {isOpenMobile && (
           <button
             onClick={onCloseMobile}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white lg:hidden transition-colors"
+            className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
         )}
       </div>
 
-      {/* Add New Group Button */}
-      <div className="p-4 pb-2">
+      {/* Cloud Sync Status Pill */}
+      <div className="px-4 pt-3 pb-1">
         <button
-          id="sidebar-new-group-btn"
-          onClick={() => {
-            onOpenNewGroupModal();
-            if (isOpenMobile) onCloseMobile();
-          }}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 active:scale-[0.99] transition-all cursor-pointer ring-1 ring-blue-500"
+          onClick={onOpenCloudModal}
+          className="w-full flex items-center justify-between rounded-xl bg-slate-800/80 hover:bg-slate-800 px-3 py-2 text-xs border border-slate-700/60 transition-colors cursor-pointer"
         >
-          <Plus className="h-4 w-4" />
-          <span>Yeni Qrup Əlavə Et</span>
+          <div className="flex items-center gap-2">
+            {syncStatus === 'syncing' ? (
+              <RefreshCw className="h-3.5 w-3.5 text-amber-400 animate-spin" />
+            ) : user ? (
+              <Cloud className="h-3.5 w-3.5 text-emerald-400" />
+            ) : (
+              <CloudOff className="h-3.5 w-3.5 text-slate-400" />
+            )}
+            <span className="text-slate-300 font-medium truncate max-w-40 text-left">
+              {user ? user.email || 'Bulud Aktivdir' : 'Bulud Hesabına Daxil Ol'}
+            </span>
+          </div>
+          <span
+            className={`h-2 w-2 rounded-full ${
+              user ? 'bg-emerald-400' : 'bg-amber-400'
+            }`}
+          />
         </button>
       </div>
 
-      {/* Search Groups (if more than 2 groups) */}
-      {groups.length > 2 && (
-        <div className="px-4 py-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-            <input
-              type="text"
-              placeholder="Qruplarda axtar..."
-              value={groupSearch}
-              onChange={(e) => setGroupSearch(e.target.value)}
-              className="w-full rounded-xl bg-slate-800/90 border border-slate-700/70 pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:border-blue-500 focus:outline-none transition-colors"
-            />
-          </div>
-        </div>
-      )}
+      {/* Groups Section Header */}
+      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          Qruplar ({groups.length})
+        </span>
+        <button
+          onClick={onOpenNewGroupModal}
+          className="flex items-center gap-1 text-xs font-semibold text-blue-400 hover:text-blue-300 cursor-pointer"
+          title="Yeni Qrup Əlavə Et"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          <span>Yeni Qrup</span>
+        </button>
+      </div>
 
       {/* Groups List */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-        <div className="px-2 py-1.5 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
-          <span>Qruplarım</span>
-          <span className="rounded-md bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
-            {groups.length}
-          </span>
-        </div>
-
-        {filteredGroups.length === 0 ? (
-          <div className="py-8 text-center px-4">
-            <Users className="mx-auto h-7 w-7 text-slate-600 mb-2" />
-            <p className="text-xs text-slate-400">
-              {groupSearch ? 'Axtarışa uyğun qrup tapılmadı' : 'Hələ qrup yaradılmayıb'}
-            </p>
+      <div className="flex-1 overflow-y-auto px-3 space-y-1 py-1">
+        {groups.length === 0 ? (
+          <div className="p-4 text-center text-xs text-slate-500">
+            Hələ heç bir qrup yaradılmayıb. Yuxarıdakı "Yeni Qrup" düyməsinə klikləyin.
           </div>
         ) : (
-          filteredGroups.map((group) => {
-            const isSelected = selectedGroupId === group.id;
-            const isRenaming = editingGroupId === group.id;
-            const groupStudents = students.filter((s) => s.groupId === group.id);
+          groups.map((grp) => {
+            const isSelected = grp.id === selectedGroupId;
+            const count = students.filter((s) => s.groupId === grp.id).length;
+
+            if (editingGroupId === grp.id) {
+              return (
+                <div
+                  key={grp.id}
+                  className="flex items-center gap-1 rounded-xl bg-slate-800 p-1.5"
+                >
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    autoFocus
+                    className="flex-1 rounded-lg bg-slate-900 px-2.5 py-1 text-xs text-white border border-slate-700 focus:outline-none focus:border-blue-500"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveRename(grp.id);
+                      if (e.key === 'Escape') handleCancelRename();
+                    }}
+                  />
+                  <button
+                    onClick={() => handleSaveRename(grp.id)}
+                    className="p-1 text-emerald-400 hover:bg-slate-700 rounded-md cursor-pointer"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={handleCancelRename}
+                    className="p-1 text-slate-400 hover:bg-slate-700 rounded-md cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            }
 
             return (
               <div
-                key={group.id}
-                id={`group-item-${group.id}`}
-                onClick={() => {
-                  if (!isRenaming) {
-                    onSelectGroup(group.id);
-                    if (isOpenMobile) onCloseMobile();
-                  }
-                }}
-                className={`group relative flex items-center justify-between rounded-xl px-3 py-2.5 cursor-pointer text-xs transition-all ${
+                key={grp.id}
+                className={`group relative flex items-center justify-between rounded-xl px-3 py-2.5 text-xs transition-all cursor-pointer ${
                   isSelected
                     ? 'bg-blue-600 text-white font-semibold shadow-sm'
                     : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
                 }`}
+                onClick={() => {
+                  onSelectGroup(grp.id);
+                  if (isOpenMobile) onCloseMobile();
+                }}
               >
-                {/* Left info & Rename Input */}
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <BookOpen
-                    className={`h-4 w-4 shrink-0 ${
-                      isSelected ? 'text-white' : 'text-slate-400 group-hover:text-slate-300'
+                <div className="flex flex-col min-w-0 pr-2">
+                  <span className="truncate">{grp.name}</span>
+                  <span
+                    className={`text-[10px] mt-0.5 ${
+                      isSelected ? 'text-blue-100' : 'text-slate-400'
                     }`}
-                  />
+                  >
+                    {grp.subject || 'Fənn qeyd edilməyib'} • {count} şagird
+                  </span>
+                </div>
 
-                  {isRenaming ? (
-                    <div
-                      className="flex items-center gap-1 flex-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <input
-                        type="text"
-                        value={tempGroupName}
-                        onChange={(e) => setTempGroupName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') saveRename(group.id, e);
-                          if (e.key === 'Escape') setEditingGroupId(null);
+                <div
+                  className="relative flex items-center gap-1 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() =>
+                      setActiveMenuGroupId(
+                        activeMenuGroupId === grp.id ? null : grp.id
+                      )
+                    }
+                    className={`p-1 rounded-md opacity-70 hover:opacity-100 transition-opacity cursor-pointer ${
+                      isSelected
+                        ? 'hover:bg-blue-700 text-white'
+                        : 'hover:bg-slate-700 text-slate-400'
+                    }`}
+                  >
+                    <MoreVertical className="h-3.5 w-3.5" />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {activeMenuGroupId === grp.id && (
+                    <div className="absolute right-0 top-7 z-30 w-36 rounded-xl bg-slate-800 p-1 shadow-xl border border-slate-700 text-xs">
+                      <button
+                        onClick={() => startRename(grp)}
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-slate-200 hover:bg-slate-700 cursor-pointer"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                        <span>Adı dəyiş</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `"${grp.name}" qrupunu və ona aid məlumatları silmək istədiyinizə əminsiniz?`
+                            )
+                          ) {
+                            onDeleteGroup(grp.id);
+                          }
+                          setActiveMenuGroupId(null);
                         }}
-                        autoFocus
-                        className="w-full rounded-lg bg-slate-950 border border-blue-400 px-2 py-1 text-xs text-white focus:outline-none"
-                      />
-                      <button
-                        onClick={(e) => saveRename(group.id, e)}
-                        className="rounded-md p-1 text-emerald-400 hover:bg-slate-800"
-                        title="Yadda saxla"
+                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-rose-400 hover:bg-rose-500/10 cursor-pointer"
                       >
-                        <Check className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Qrupu sil</span>
                       </button>
-                      <button
-                        onClick={cancelRename}
-                        className="rounded-md p-1 text-slate-400 hover:bg-slate-800"
-                        title="Ləğv et"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-xs font-semibold">{group.name}</div>
-                      {group.subject && (
-                        <div
-                          className={`text-[10px] truncate ${
-                            isSelected ? 'text-blue-100' : 'text-slate-400'
-                          }`}
-                        >
-                          {group.subject}
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
-
-                {/* Right badges & Rename / Delete actions */}
-                {!isRenaming && (
-                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        isSelected
-                          ? 'bg-blue-500/40 text-white'
-                          : 'bg-slate-800 text-slate-400 group-hover:text-slate-200'
-                      }`}
-                      title={`${groupStudents.length} şagird`}
-                    >
-                      {groupStudents.length}
-                    </span>
-
-                    {/* Hover action buttons: Rename & Delete */}
-                    <div className="hidden items-center gap-0.5 group-hover:flex">
-                      <button
-                        onClick={(e) => startRename(group, e)}
-                        title="Qrupun adını dəyiş"
-                        className="rounded-md p-1 text-slate-400 hover:bg-slate-700 hover:text-white transition-colors"
-                      >
-                        <Edit2 className="h-3 w-3" />
-                      </button>
-
-                      <button
-                        onClick={(e) => handleDelete(group, e)}
-                        title="Qrupu sil"
-                        className="rounded-md p-1 text-slate-400 hover:bg-red-950 hover:text-red-300 transition-colors"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })
         )}
       </div>
 
-      {/* Footer info: Total stats and Cloud Sync badge */}
-      <div className="border-t border-slate-800 p-4 bg-slate-950/50 space-y-3">
-        {onOpenCloudModal && (
-          <CloudSyncBadge
-            user={user || null}
-            syncStatus={syncStatus}
-            onClick={onOpenCloudModal}
-          />
+      {/* Footer Navigation: Hesabat Mərkəzi */}
+      <div className="p-3 border-t border-slate-800 bg-slate-950/40 space-y-1.5">
+        {onOpenReportModal && (
+          <button
+            id="sidebar-open-report-btn"
+            onClick={onOpenReportModal}
+            className="flex w-full items-center gap-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 px-3.5 py-2.5 text-xs font-semibold transition-colors cursor-pointer"
+          >
+            <FileText className="h-4 w-4 text-blue-400" />
+            <div className="text-left flex-1">
+              <div className="text-white font-bold">Hesabat Mərkəzi</div>
+              <div className="text-[10px] text-blue-300/80">PDF və Word hesabatı çıxar</div>
+            </div>
+          </button>
         )}
-
-        <div>
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
-            <span>Ümumi Şagird:</span>
-            <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded-md text-[11px]">{students.length} nəfər</span>
-          </div>
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Qruplar:</span>
-            <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded-md text-[11px]">{groups.length} qrup</span>
-          </div>
-        </div>
       </div>
     </div>
   );
 
   return (
     <>
-      {/* Desktop static sidebar */}
-      <aside className="hidden lg:flex shrink-0 h-screen sticky top-0">{content}</aside>
+      {/* Desktop Persistent Sidebar */}
+      <aside className="hidden md:flex md:flex-col h-full shrink-0">
+        {sidebarContent}
+      </aside>
 
       {/* Mobile Drawer */}
       {isOpenMobile && (
-        <div className="fixed inset-0 z-50 flex lg:hidden">
+        <div className="fixed inset-0 z-40 flex md:hidden">
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
             onClick={onCloseMobile}
           />
-          <div className="relative flex w-72 max-w-[80vw] flex-1 flex-col z-10">{content}</div>
+          <div className="relative z-50 flex h-full">{sidebarContent}</div>
         </div>
       )}
-
-      {/* Delete Group Confirmation Modal */}
-      <ConfirmDialogModal
-        isOpen={groupToDelete !== null}
-        title="Qrupu silmək istəyirsiniz?"
-        message={
-          groupToDelete
-            ? students.filter((s) => s.groupId === groupToDelete.id).length > 0
-              ? `"${groupToDelete.name}" qrupunda ${
-                  students.filter((s) => s.groupId === groupToDelete.id).length
-                } şagird var. Qrupu və tərkibindəki bütün şagirdləri, ödənişləri silmək istədiyinizə əminsiniz?`
-              : `"${groupToDelete.name}" qrupunu silmək istədiyinizə əminsiniz?`
-            : ''
-        }
-        confirmText="Bəli, Qrupu Sil"
-        cancelText="İmtina et"
-        variant="danger"
-        onConfirm={() => {
-          if (groupToDelete) {
-            onDeleteGroup(groupToDelete.id);
-            setGroupToDelete(null);
-          }
-        }}
-        onClose={() => setGroupToDelete(null)}
-      />
     </>
   );
 };

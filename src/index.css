@@ -2,28 +2,26 @@
 
 @layer base {
   body {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    background-color: #f8fafc;
+    color: #0f172a;
   }
 }
 
-/* Custom sleek scrollbar for tables and sidebars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-report-area,
+  #printable-report-area * {
+    visibility: visible;
+  }
+  #printable-report-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 16px;
+    background: white;
+  }
 }
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.35);
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.6);
-}
-

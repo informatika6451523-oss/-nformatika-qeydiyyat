@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
 import {
   Menu,
+  FileText,
+  Users,
+  CalendarCheck,
+  History,
+  Cloud,
+  CloudOff,
+  RefreshCw,
   Edit2,
   Check,
   X,
-  Users,
   CreditCard,
-  CalendarCheck,
-  Receipt,
-  BookOpen,
-  Clock,
 } from 'lucide-react';
 import { Group, ActiveTab } from '../types';
 import { type User } from 'firebase/auth';
-import { CloudSyncBadge } from './CloudSyncBadge';
 
 interface GroupHeaderProps {
   group: Group;
@@ -22,9 +23,10 @@ interface GroupHeaderProps {
   onTabChange: (tab: ActiveTab) => void;
   onRenameGroup: (groupId: string, newName: string) => void;
   onOpenMobileMenu: () => void;
-  user?: User | null;
-  syncStatus?: 'syncing' | 'synced' | 'error';
-  onOpenCloudModal?: () => void;
+  user: User | null;
+  syncStatus: 'syncing' | 'synced' | 'error';
+  onOpenCloudModal: () => void;
+  onOpenReportModal?: () => void;
 }
 
 export const GroupHeader: React.FC<GroupHeaderProps> = ({
@@ -35,157 +37,170 @@ export const GroupHeader: React.FC<GroupHeaderProps> = ({
   onRenameGroup,
   onOpenMobileMenu,
   user,
-  syncStatus = 'synced',
+  syncStatus,
   onOpenCloudModal,
+  onOpenReportModal,
 }) => {
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [tempName, setTempName] = useState(group.name);
+  const [isEditing, setIsEditing] = useState(false);
+  const [newName, setNewName] = useState(group.name);
 
-  const startRename = () => {
-    setTempName(group.name);
-    setIsRenaming(true);
-  };
-
-  const handleSaveRename = () => {
-    if (tempName.trim()) {
-      onRenameGroup(group.id, tempName.trim());
+  const handleSave = () => {
+    if (newName.trim()) {
+      onRenameGroup(group.id, newName.trim());
     }
-    setIsRenaming(false);
+    setIsEditing(false);
   };
 
-  const handleCancelRename = () => {
-    setIsRenaming(false);
-    setTempName(group.name);
+  const handleCancel = () => {
+    setNewName(group.name);
+    setIsEditing(false);
   };
 
   return (
-    <div className="bg-white border-b border-slate-200 px-4 sm:px-8 py-4.5 sticky top-0 z-10">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        {/* Left: Mobile hamburger & Group title */}
+    <header className="sticky top-0 z-20 border-b border-slate-200/90 bg-white/90 backdrop-blur-md px-4 sm:px-8 py-3.5 shadow-xs">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between max-w-7xl mx-auto">
+        {/* Left: Mobile Menu Button + Group Title Info */}
         <div className="flex items-center gap-3">
           <button
             onClick={onOpenMobileMenu}
-            className="rounded-xl border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 lg:hidden cursor-pointer transition-colors"
-            title="Qruplar menyusunu aç"
+            className="flex md:hidden h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer"
           >
             <Menu className="h-5 w-5" />
           </button>
 
           <div>
-            {isRenaming ? (
+            {isEditing ? (
               <div className="flex items-center gap-1.5">
                 <input
                   type="text"
-                  value={tempName}
-                  onChange={(e) => setTempName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSaveRename();
-                    if (e.key === 'Escape') handleCancelRename();
-                  }}
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
                   autoFocus
-                  className="rounded-xl border-2 border-blue-600 px-3 py-1 text-base sm:text-lg font-bold text-slate-900 focus:outline-none shadow-xs"
+                  className="rounded-lg border border-blue-500 px-2.5 py-1 text-base font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSave();
+                    if (e.key === 'Escape') handleCancel();
+                  }}
                 />
                 <button
-                  onClick={handleSaveRename}
-                  className="rounded-lg bg-emerald-600 p-2 text-white hover:bg-emerald-700 cursor-pointer transition-colors"
-                  title="Yadda saxla"
+                  onClick={handleSave}
+                  className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-lg cursor-pointer"
                 >
                   <Check className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={handleCancelRename}
-                  className="rounded-lg bg-slate-100 p-2 text-slate-600 hover:bg-slate-200 cursor-pointer transition-colors"
-                  title="Ləğv et"
+                  onClick={handleCancel}
+                  className="p-1 text-slate-400 hover:bg-slate-100 rounded-lg cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 group">
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
                   {group.name}
-                </h2>
+                </h1>
                 <button
-                  onClick={startRename}
-                  title="Qrupun adını dəyiş"
-                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer"
+                  onClick={() => {
+                    setNewName(group.name);
+                    setIsEditing(true);
+                  }}
+                  className="text-slate-400 hover:text-slate-700 p-1 rounded-md cursor-pointer"
+                  title="Qrup adını dəyiş"
                 >
-                  <Edit2 className="h-4 w-4" />
+                  <Edit2 className="h-3.5 w-3.5" />
                 </button>
               </div>
             )}
 
-            {/* Sub-info chips */}
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-              <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
-                <Users className="h-3.5 w-3.5 text-slate-500" />
-                {studentCount} şagird
-              </span>
-              {group.subject && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 border border-slate-200/60 px-2 py-0.5 font-medium text-slate-600">
-                  <BookOpen className="h-3.5 w-3.5 text-slate-400" /> {group.subject}
-                </span>
-              )}
-              {group.schedule && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 border border-slate-200/60 px-2 py-0.5 font-medium text-slate-600">
-                  <Clock className="h-3.5 w-3.5 text-slate-400" /> {group.schedule}
-                </span>
+            <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+              <span>{group.subject || 'Fənn qeyd edilməyib'}</span>
+              <span>•</span>
+              <span>{studentCount} şagird</span>
+              {group.scheduleDays && group.scheduleDays.length > 0 && (
+                <>
+                  <span>•</span>
+                  <span>{group.scheduleDays.join(', ')}</span>
+                </>
               )}
             </div>
           </div>
         </div>
 
-        {/* Right side: Cloud Sync badge & Navigation Tabs */}
-        <div className="flex items-center gap-2.5">
-          {onOpenCloudModal && (
-            <CloudSyncBadge
-              user={user || null}
-              syncStatus={syncStatus}
-              onClick={onOpenCloudModal}
-              compact={true}
-            />
+        {/* Right: Actions & Cloud Sync Status */}
+        <div className="flex items-center gap-2.5 self-end sm:self-center">
+          {onOpenReportModal && (
+            <button
+              id="header-open-report-btn"
+              onClick={onOpenReportModal}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs transition-colors cursor-pointer"
+              title="Şagird və ödəniş hesabatını çıxar"
+            >
+              <FileText className="h-3.5 w-3.5 text-blue-600" />
+              <span>Hesabat</span>
+            </button>
           )}
 
-          {/* Navigation Tabs - Segmented Pill Control */}
-          <div className="flex items-center gap-1 rounded-xl bg-slate-100/90 p-1 border border-slate-200/70 overflow-x-auto">
           <button
-            onClick={() => onTabChange('students_payments')}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === 'students_payments'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
+            onClick={onOpenCloudModal}
+            className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-colors cursor-pointer border ${
+              user
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
             }`}
           >
-            <CreditCard className="h-3.5 w-3.5 text-blue-600" />
-            <span>Şagirdlər & Ödənişlər</span>
-          </button>
-
-          <button
-            onClick={() => onTabChange('attendance')}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === 'attendance'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <CalendarCheck className="h-3.5 w-3.5 text-indigo-600" />
-            <span>Davamiyyət Jurnalı</span>
-          </button>
-
-          <button
-            onClick={() => onTabChange('payment_history')}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === 'payment_history'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Receipt className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Bütün Ödənişlər</span>
+            {syncStatus === 'syncing' ? (
+              <RefreshCw className="h-3.5 w-3.5 animate-spin text-amber-600" />
+            ) : user ? (
+              <Cloud className="h-3.5 w-3.5 text-emerald-600" />
+            ) : (
+              <CloudOff className="h-3.5 w-3.5 text-amber-600" />
+            )}
+            <span className="hidden sm:inline">
+              {user ? 'Bulud Sinxron' : 'Buluda Qoşul'}
+            </span>
           </button>
         </div>
       </div>
-    </div>
-  </div>
+
+      {/* Tabs Navigation */}
+      <div className="flex items-center gap-1 mt-3.5 border-t border-slate-100 pt-2.5 max-w-7xl mx-auto overflow-x-auto">
+        <button
+          onClick={() => onTabChange('students_payments')}
+          className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'students_payments'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Users className="h-3.5 w-3.5" />
+          <span>Şagirdlər və Ödənişlər</span>
+        </button>
+
+        <button
+          onClick={() => onTabChange('attendance')}
+          className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'attendance'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <CalendarCheck className="h-3.5 w-3.5" />
+          <span>Davamiyyət Jurnalı</span>
+        </button>
+
+        <button
+          onClick={() => onTabChange('payment_history')}
+          className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'payment_history'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <History className="h-3.5 w-3.5" />
+          <span>Ödəniş Tarixçəsi</span>
+        </button>
+      </div>
+    </header>
   );
 };

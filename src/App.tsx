@@ -15,6 +15,7 @@ import { PaymentReminderModal } from './components/PaymentReminderModal';
 import { EditStudentModal } from './components/EditStudentModal';
 import { QuickDateEditModal } from './components/QuickDateEditModal';
 import { CloudAccountModal } from './components/CloudAccountModal';
+import { ReportModal } from './components/ReportModal';
 import {
   Group,
   Student,
@@ -44,7 +45,7 @@ import {
   cloudSaveNote,
   cloudDeleteNote,
 } from './utils/firebase';
-import { Users, Plus, BookOpen, Sparkles } from 'lucide-react';
+import { Users, Plus, BookOpen, Sparkles, FileText } from 'lucide-react';
 
 export default function App() {
   const [data, setData] = useState<AppData>(() => loadAppData());
@@ -70,6 +71,7 @@ export default function App() {
   const [reminderModalStudent, setReminderModalStudent] = useState<Student | null>(null);
   const [editStudentModalStudent, setEditStudentModalStudent] = useState<Student | null>(null);
   const [quickDateModalStudent, setQuickDateModalStudent] = useState<Student | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Firebase Auth listener
@@ -202,7 +204,7 @@ export default function App() {
       attendance: prev.attendance.filter((a) => a.groupId !== groupId),
     }));
     if (user) {
-      cloudDeleteGroup(groupId);
+      cloudDeleteGroup(user.uid, groupId);
     }
   };
 
@@ -306,7 +308,7 @@ export default function App() {
       notes: prev.notes.filter((n) => n.studentId !== studentId),
     }));
     if (user) {
-      cloudDeleteStudent(studentId);
+      cloudDeleteStudent(user.uid, studentId);
     }
   };
 
@@ -336,7 +338,7 @@ export default function App() {
       notes: prev.notes.filter((n) => n.id !== noteId),
     }));
     if (user) {
-      cloudDeleteNote(noteId);
+      cloudDeleteNote(user.uid, noteId);
     }
   };
 
@@ -368,7 +370,7 @@ export default function App() {
       payments: prev.payments.filter((p) => p.id !== paymentId),
     }));
     if (user) {
-      cloudDeletePayment(paymentId);
+      cloudDeletePayment(user.uid, paymentId);
     }
   };
 
@@ -478,6 +480,7 @@ export default function App() {
         user={user}
         syncStatus={syncStatus}
         onOpenCloudModal={() => setIsCloudModalOpen(true)}
+        onOpenReportModal={() => setIsReportModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -520,6 +523,7 @@ export default function App() {
               user={user}
               syncStatus={syncStatus}
               onOpenCloudModal={() => setIsCloudModalOpen(true)}
+              onOpenReportModal={() => setIsReportModalOpen(true)}
             />
 
             {/* Tab Views */}
@@ -546,6 +550,7 @@ export default function App() {
                   onUpdateStudentFee={handleUpdateStudentFee}
                   onDeleteStudent={handleDeleteStudent}
                   onDeletePayment={handleDeletePayment}
+                  onOpenReportModal={() => setIsReportModalOpen(true)}
                 />
               )}
 
@@ -581,13 +586,24 @@ export default function App() {
                 Şagirdlərinizi, davamiyyəti və ödənişləri idarə etmək üçün sol tərəfdən mövcud qrupu
                 seçin və ya yeni qrup əlavə edin.
               </p>
-              <button
-                onClick={() => setIsNewGroupModalOpen(true)}
-                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Yeni Qrup Yarat</span>
-              </button>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={() => setIsNewGroupModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors cursor-pointer"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Yeni Qrup Yarat</span>
+                </button>
+                {data.groups.length > 0 && (
+                  <button
+                    onClick={() => setIsReportModalOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                  >
+                    <FileText className="h-4 w-4 text-blue-600" />
+                    <span>Hesabat Mərkəzi</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -674,6 +690,16 @@ export default function App() {
         lastSyncedTime={lastSyncedTime}
         appData={data}
         onRefreshData={handleRefreshData}
+      />
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        groups={data.groups}
+        students={data.students}
+        payments={data.payments}
+        initialGroupId={selectedGroupId}
+        initialMonth={selectedMonth}
       />
     </div>
   );

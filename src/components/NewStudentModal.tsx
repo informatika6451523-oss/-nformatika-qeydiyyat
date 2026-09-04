@@ -1,219 +1,239 @@
-import React, { useState } from 'react';
-import { X, UserPlus, Phone, Banknote, FileText, Calendar, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, UserPlus, Phone, Calendar, CreditCard, FileText, CheckCircle2 } from 'lucide-react';
 import { Student } from '../types';
-import { getTodayDateString } from '../utils/dateUtils';
+import { getTodayDateString, getDayFromDate } from '../utils/dateUtils';
 
 interface NewStudentModalProps {
   isOpen: boolean;
+  onClose: () => void;
   groupId: string;
   defaultFee: number;
-  onClose: () => void;
-  onSave: (student: Omit<Student, 'id' | 'createdAt'>) => void;
+  onSave?: (studentData: Omit<Student, 'id' | 'createdAt'>) => void;
+  onCreateStudent?: (studentData: Omit<Student, 'id' | 'createdAt'>) => void;
 }
 
 export const NewStudentModal: React.FC<NewStudentModalProps> = ({
   isOpen,
+  onClose,
   groupId,
   defaultFee,
-  onClose,
   onSave,
+  onCreateStudent,
 }) => {
-  const initialToday = getTodayDateString();
-  const initialDay = parseInt(initialToday.split('-')[2], 10) || 1;
   const [name, setName] = useState('');
-  const [enrollmentDate, setEnrollmentDate] = useState(initialToday);
-  const [paymentDueDay, setPaymentDueDay] = useState<number>(initialDay);
   const [phone, setPhone] = useState('');
-  const [monthlyFee, setMonthlyFee] = useState<number | ''>(defaultFee || 80);
+  const [parentPhone, setParentPhone] = useState('');
+  const [monthlyFee, setMonthlyFee] = useState<number>(defaultFee || 80);
+  const [enrollmentDate, setEnrollmentDate] = useState<string>(getTodayDateString());
+  const [paymentDayOfMonth, setPaymentDayOfMonth] = useState<number>(() =>
+    getDayFromDate(getTodayDateString())
+  );
   const [notes, setNotes] = useState('');
 
-  if (!isOpen) return null;
-
-  const handleEnrollmentDateChange = (newDate: string) => {
-    setEnrollmentDate(newDate);
-    if (newDate) {
-      const parts = newDate.split('-');
-      if (parts.length === 3) {
-        const day = parseInt(parts[2], 10);
-        if (!isNaN(day) && day >= 1 && day <= 31) {
-          setPaymentDueDay(day);
-        }
+  // Automatically update paymentDayOfMonth whenever enrollmentDate changes (User Request 7)
+  useEffect(() => {
+    if (enrollmentDate) {
+      const day = getDayFromDate(enrollmentDate);
+      if (day >= 1 && day <= 31) {
+        setPaymentDayOfMonth(day);
       }
     }
-  };
+  }, [enrollmentDate]);
+
+  // Reset or initialize on modal open
+  useEffect(() => {
+    if (isOpen) {
+      setMonthlyFee(defaultFee || 80);
+      const today = getTodayDateString();
+      setEnrollmentDate(today);
+      setPaymentDayOfMonth(getDayFromDate(today));
+    }
+  }, [isOpen, defaultFee]);
+
+  if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    onSave({
+    const data: Omit<Student, 'id' | 'createdAt'> = {
       groupId,
       name: name.trim(),
+      phone: phone.trim() || undefined,
+      parentPhone: parentPhone.trim() || undefined,
+      monthlyFee: Number(monthlyFee) || 80,
       enrollmentDate: enrollmentDate || getTodayDateString(),
-      paymentDueDay: Number(paymentDueDay) || 5,
-      phone: phone.trim() || '',
-      monthlyFee: typeof monthlyFee === 'number' ? monthlyFee : (defaultFee || 80),
-      notes: notes.trim() || '',
-    });
+      paymentDueDay: Number(paymentDayOfMonth) || getDayFromDate(enrollmentDate) || 1,
+      paymentDayOfMonth: Number(paymentDayOfMonth) || getDayFromDate(enrollmentDate) || 1,
+      notes: notes.trim() || undefined,
+    };
+
+    if (onSave) onSave(data);
+    else if (onCreateStudent) onCreateStudent(data);
 
     setName('');
-    const resetDate = getTodayDateString();
-    const resetDay = parseInt(resetDate.split('-')[2], 10) || 1;
-    setEnrollmentDate(resetDate);
-    setPaymentDueDay(resetDay);
     setPhone('');
-    setMonthlyFee(defaultFee || 80);
+    setParentPhone('');
     setNotes('');
     onClose();
   };
 
   return (
-    <div
-      id="new-student-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-xs"
-      onClick={onClose}
-    >
-      <div
-        id="new-student-modal-card"
-        className="w-full max-w-md rounded-2xl bg-white p-6 sm:p-7 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
               <UserPlus className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 tracking-tight">Yeni Şagird Əlavə Et</h2>
-              <p className="text-xs text-slate-500 font-medium">Qrupa yeni şagird qeydiyyatı</p>
+              <h3 className="text-base font-bold text-slate-900">Yeni Şagird Əlavə Et</h3>
+              <p className="text-xs text-slate-500">
+                Şagirdin əlaqə və ödəniş məlumatlarını qeyd edin
+              </p>
             </div>
           </div>
           <button
-            id="close-new-student-modal-btn"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors cursor-pointer"
+            className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Şagirdin Adı və Soyadı <span className="text-rose-500">*</span>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Şagirdin Adı və Soyadı *
             </label>
             <input
               type="text"
-              id="student-name-input"
               required
-              autoFocus
-              placeholder="məs: Murad Əliyev"
+              placeholder="məsələn: Əli Məmmədov"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white"
             />
           </div>
 
-          {/* Registration Date (Ay və gün) */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5 text-blue-600" />
-              Kursa Qeydiyyat Tarixi (Ay və Gün) <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="date"
-              required
-              value={enrollmentDate}
-              onChange={(e) => handleEnrollmentDateChange(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs cursor-pointer"
-            />
-            <p className="mt-1 text-[11px] text-blue-600 font-medium flex items-center gap-1">
-              <span>✓</span> Ödəniş günü avtomatik olaraq <strong>hər ayın {paymentDueDay}-i</strong> təyin edildi
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <Banknote className="h-3.5 w-3.5 text-slate-400" />
-                Aylıq Haqq (AZN) <span className="text-rose-500">*</span>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Şagirdin Əlaqə Nömrəsi
               </label>
               <input
-                type="number"
-                id="student-fee-input"
-                min="0"
-                step="5"
-                required
-                value={monthlyFee}
-                onChange={(e) => setMonthlyFee(e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs"
+                type="text"
+                placeholder="+994 50 000 00 00"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-slate-400" />
-                Ödəniş Günü <span className="text-rose-500">*</span>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Valideynin Nömrəsi
               </label>
-              <select
-                value={paymentDueDay}
-                onChange={(e) => setPaymentDueDay(Number(e.target.value))}
-                className="w-full rounded-xl border border-blue-200 bg-blue-50/40 px-3.5 py-2.5 text-sm font-semibold text-blue-950 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs cursor-pointer"
-              >
-                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                  <option key={d} value={d}>
-                    Hər ayın {d}-i
-                  </option>
-                ))}
-              </select>
+              <input
+                type="text"
+                placeholder="+994 55 000 00 00"
+                value={parentPhone}
+                onChange={(e) => setParentPhone(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+              />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <Phone className="h-3.5 w-3.5 text-slate-400" />
-              Əlaqə Nömrəsi (WhatsApp)
-            </label>
-            <input
-              type="tel"
-              id="student-phone-input"
-              placeholder="050 123 45 67"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs"
-            />
+          {/* Date & Payment Day Section (Requirement 7) */}
+          <div className="rounded-xl bg-blue-50/50 p-3.5 border border-blue-100 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center gap-1">
+                  <Calendar className="h-3.5 w-3.5 text-blue-600" />
+                  <span>Kursa Qeydiyyat Tarixi</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={enrollmentDate}
+                  onChange={(e) => setEnrollmentDate(e.target.value)}
+                  className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center gap-1">
+                  <CreditCard className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Hər Ayın Ödəniş Günü</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    required
+                    value={paymentDayOfMonth}
+                    onChange={(e) => setPaymentDayOfMonth(Number(e.target.value))}
+                    className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                    -i / -si
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 text-[11px] text-blue-700 bg-white/80 p-2 rounded-lg border border-blue-100 font-medium">
+              <CheckCircle2 className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+              <span>
+                Qeydiyyat gününə uyğun olaraq ödəniş günü avtomatik{' '}
+                <strong>hər ayın {paymentDayOfMonth}-i</strong> olaraq təyin edildi.
+              </span>
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <FileText className="h-3.5 w-3.5 text-slate-400" />
-              Qeydlər (Valideyn, sinif və s.)
-            </label>
-            <input
-              type="text"
-              id="student-notes-input"
-              placeholder="məs: Anasının nömrəsi, 9-cu sinif..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Aylıq Ödəniş Məbləği (AZN) *
+              </label>
+              <input
+                type="number"
+                min="0"
+                required
+                value={monthlyFee}
+                onChange={(e) => setMonthlyFee(Number(e.target.value))}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Qeydlər (İxtiyari)
+              </label>
+              <input
+                type="text"
+                placeholder="Məktəb, xüsusi qeyd..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white"
+              />
+            </div>
           </div>
 
           <div className="mt-6 flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
             >
-              Ləğv et
+              İmtina
             </button>
             <button
               type="submit"
-              id="submit-create-student-btn"
-              disabled={!name.trim()}
-              className="rounded-xl bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 active:scale-[0.99] disabled:opacity-50 transition-all cursor-pointer"
+              className="rounded-xl bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-bold text-white shadow-2xs cursor-pointer"
             >
-              Əlavə Et
+              Şagirdi Əlavə Et
             </button>
           </div>
         </form>

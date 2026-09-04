@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
+  History,
   Receipt,
-  Search,
-  Calendar,
   Trash2,
+  Search,
+  Filter,
+  CreditCard,
   AlertCircle,
-  Banknote,
-  FileText
+  Calendar,
 } from 'lucide-react';
 import { Group, Student, PaymentRecord } from '../types';
 import { formatFullDateAZ, formatMonthName } from '../utils/dateUtils';
@@ -25,166 +26,162 @@ export const PaymentHistoryView: React.FC<PaymentHistoryViewProps> = ({
   payments,
   onDeletePayment,
 }) => {
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedForMonthFilter, setSelectedForMonthFilter] = useState<string>('all');
-  const [paymentToDeleteId, setPaymentToDeleteId] = useState<string | null>(null);
+  const [paymentToDelete, setPaymentToDelete] = useState<PaymentRecord | null>(null);
 
-  // Filter payments for this group
-  const groupPayments = payments
-    .filter((p) => p.groupId === group.id)
-    .sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
+  // Filter payments belonging to current group
+  const groupPayments = payments.filter((p) => p.groupId === group.id);
 
-  // Get distinct forMonths
-  const distinctMonths = Array.from<string>(
-    new Set(groupPayments.map((p) => p.forMonth))
-  ).sort((a, b) => b.localeCompare(a));
-
-  const filtered = groupPayments.filter((p) => {
-    const student = students.find((s) => s.id === p.studentId);
+  const filteredPayments = groupPayments.filter((payment) => {
+    const student = students.find((s) => s.id === payment.studentId);
     const studentName = student?.name.toLowerCase() || '';
-    const matchesSearch = studentName.includes(searchQuery.toLowerCase());
-    const matchesMonth =
-      selectedForMonthFilter === 'all' || p.forMonth === selectedForMonthFilter;
-    return matchesSearch && matchesMonth;
+
+    if (selectedStudentId !== 'all' && payment.studentId !== selectedStudentId) {
+      return false;
+    }
+
+    if (
+      searchQuery &&
+      !studentName.includes(searchQuery.toLowerCase()) &&
+      !payment.receiptNumber?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      !payment.note?.toLowerCase().includes(searchQuery.toLowerCase())
+    ) {
+      return false;
+    }
+
+    return true;
   });
 
-  const totalFilteredAmount = filtered.reduce((sum, p) => sum + p.amount, 0);
+  // Sort by date descending
+  filteredPayments.sort(
+    (a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()
+  );
+
+  const totalSum = filteredPayments.reduce((acc, p) => acc + p.amount, 0);
 
   return (
     <div className="space-y-5">
-      {/* Top filter bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl bg-white p-5 sm:p-6 shadow-sm border border-slate-200/90">
-        <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Şagird adı ilə axtar..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs"
-            />
+      {/* Filter and summary bar */}
+      <div className="rounded-2xl bg-white p-5 sm:p-6 shadow-2xs border border-slate-200">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Şagird və ya qəbz axtar..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3.5 py-1.5 text-xs sm:text-sm text-slate-900 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+
+            {/* Student Filter */}
+            <select
+              value={selectedStudentId}
+              onChange={(e) => setSelectedStudentId(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-blue-500"
+            >
+              <option value="all">Bütün Şagirdlər</option>
+              {students.map((st) => (
+                <option key={st.id} value={st.id}>
+                  {st.name}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <select
-            value={selectedForMonthFilter}
-            onChange={(e) => setSelectedForMonthFilter(e.target.value)}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 focus:border-blue-500 focus:outline-none cursor-pointer shadow-xs"
-          >
-            <option value="all">Bütün Aylar</option>
-            {distinctMonths.map((m) => (
-              <option key={m} value={m}>
-                {formatMonthName(m)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2 rounded-xl bg-emerald-50/80 border border-emerald-200/80 px-4 py-2 text-xs">
-          <Banknote className="h-4 w-4 text-emerald-600" />
-          <span className="text-emerald-800 font-medium">Cəmi:</span>
-          <span className="font-bold text-emerald-900 text-sm">{totalFilteredAmount} AZN</span>
-          <span className="text-emerald-700/80 font-medium">({filtered.length} qeyd)</span>
+          <div className="rounded-xl bg-blue-50 px-4 py-2 border border-blue-100 flex items-center gap-2 self-start md:self-auto">
+            <CreditCard className="h-4 w-4 text-blue-600" />
+            <span className="text-xs text-blue-800 font-medium">Toplam Ödəniş:</span>
+            <span className="text-sm font-bold text-blue-900">{totalSum} AZN</span>
+            <span className="text-xs text-blue-600">({filteredPayments.length} qeyd)</span>
+          </div>
         </div>
       </div>
 
-      {/* Payments list table */}
-      <div className="overflow-hidden rounded-2xl bg-white border border-slate-200/90 shadow-sm">
-        {filtered.length === 0 ? (
+      {/* History Table */}
+      <div className="rounded-2xl bg-white border border-slate-200 overflow-hidden shadow-2xs">
+        {filteredPayments.length === 0 ? (
           <div className="py-14 text-center px-4">
             <AlertCircle className="mx-auto h-10 w-10 text-slate-300 mb-3" />
-            <h3 className="text-sm font-bold text-slate-800">Heç bir ödəniş qeydi tapılmadı</h3>
+            <h3 className="text-sm font-bold text-slate-800">Ödəniş qeydi tapılmadı</h3>
             <p className="mt-1 text-xs text-slate-500">
-              "Şagirdlər və Ödənişlər" bölməsindən yeni ödəniş qeyd edə bilərsiniz.
+              Bu filtr üzrə heç bir ödəniş qeydi qeydə alınmayıb.
             </p>
           </div>
         ) : (
-          <div>
-            {/* Desktop Table Header */}
-            <div className="hidden sm:grid sm:grid-cols-12 gap-4 px-5 py-3 bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              <div className="col-span-5">Şagird & Hansı Ay Üçün</div>
-              <div className="col-span-3">Məbləğ & Üsul</div>
-              <div className="col-span-3">Ödəniş Tarixi & Qeyd</div>
-              <div className="col-span-1 text-right">Sil</div>
-            </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                <tr>
+                  <th className="py-3 px-4">Ödəniş Tarixi</th>
+                  <th className="py-3 px-4">Şagird</th>
+                  <th className="py-3 px-4">Aid Olduğu Ay</th>
+                  <th className="py-3 px-4">Məbləğ</th>
+                  <th className="py-3 px-4">Qəbz №</th>
+                  <th className="py-3 px-4">Qeyd</th>
+                  <th className="py-3 px-4 text-right">Əməliyyat</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {filteredPayments.map((payment) => {
+                  const student = students.find((s) => s.id === payment.studentId);
 
-            <div className="divide-y divide-slate-100">
-              {filtered.map((payment) => {
-                const student = students.find((s) => s.id === payment.studentId);
-                return (
-                  <div
-                    key={payment.id}
-                    className="flex flex-col gap-2 p-4 sm:px-5 sm:py-3.5 sm:grid sm:grid-cols-12 sm:items-center hover:bg-slate-50/70 transition-colors"
-                  >
-                    <div className="sm:col-span-5 flex items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-                        <Receipt className="h-4.5 w-4.5" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-sm font-bold text-slate-900 block truncate">
-                          {student?.name || 'Silinmiş şagird'}
-                        </span>
-                        <span className="text-xs font-semibold text-slate-500">
-                          {formatMonthName(payment.forMonth)} üçün ödəniş
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="sm:col-span-3 flex items-center gap-2">
-                      <span className="rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
-                        +{payment.amount} AZN
-                      </span>
-                      {payment.paymentMethod && (
-                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 uppercase">
-                          {payment.paymentMethod === 'cash' ? 'Nağd' : payment.paymentMethod === 'm10' ? 'M10/Kart' : 'Köçürmə'}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="sm:col-span-3 text-xs text-slate-500">
-                      <div className="flex items-center gap-1 font-medium text-slate-700">
-                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                        <span>{formatFullDateAZ(payment.paymentDate)}</span>
-                      </div>
-                      {payment.note && (
-                        <div className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500 italic">
-                          <FileText className="h-3 w-3 text-slate-400" />
-                          <span className="truncate max-w-[180px]">{payment.note}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="sm:col-span-1 flex justify-end">
-                      <button
-                        onClick={() => setPaymentToDeleteId(payment.id)}
-                        className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
-                        title="Sil"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  return (
+                    <tr key={payment.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-3 px-4 text-slate-600">
+                        {formatFullDateAZ(payment.paymentDate)}
+                      </td>
+                      <td className="py-3 px-4 font-bold text-slate-900">
+                        {student?.name || 'Silinmiş şagird'}
+                      </td>
+                      <td className="py-3 px-4 text-blue-700 font-semibold">
+                        {formatMonthName(payment.forMonth)}
+                      </td>
+                      <td className="py-3 px-4 font-bold text-emerald-700">
+                        {payment.amount} AZN
+                      </td>
+                      <td className="py-3 px-4 text-slate-500">
+                        {payment.receiptNumber || '—'}
+                      </td>
+                      <td className="py-3 px-4 text-slate-500 max-w-xs truncate">
+                        {payment.note || '—'}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => setPaymentToDelete(payment)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          title="Ödəniş qeydini sil"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
+      {/* Confirm Delete Payment */}
       <ConfirmDialogModal
-        isOpen={paymentToDeleteId !== null}
-        title="Ödəniş qeydini silmək istəyirsiniz?"
-        message="Bu ödəniş qeydini silmək istədiyinizə əminsiniz?"
-        confirmText="Ödənişi Sil"
-        cancelText="İmtina et"
-        variant="danger"
+        isOpen={!!paymentToDelete}
+        title="Ödəniş Qeydini Sil"
+        message={`Bu ${paymentToDelete?.amount} AZN məbləğindəki ödəniş qeydini silmək istədiyinizə əminsiniz?`}
+        confirmLabel="Bəli, Sil"
+        confirmVariant="danger"
         onConfirm={() => {
-          if (paymentToDeleteId) {
-            onDeletePayment(paymentToDeleteId);
-            setPaymentToDeleteId(null);
+          if (paymentToDelete) {
+            onDeletePayment(paymentToDelete.id);
+            setPaymentToDelete(null);
           }
         }}
-        onClose={() => setPaymentToDeleteId(null)}
+        onClose={() => setPaymentToDelete(null)}
       />
     </div>
   );
