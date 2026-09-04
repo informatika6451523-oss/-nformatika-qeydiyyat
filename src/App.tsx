@@ -258,9 +258,18 @@ export default function App() {
 
   const handleUpdateStudentEnrollmentDate = (studentId: string, newDate: string) => {
     setData((prev) => {
-      const updatedStudents = prev.students.map((s) =>
-        s.id === studentId ? { ...s, enrollmentDate: newDate } : s
-      );
+      const parts = newDate.split('-');
+      const dayNum = parts.length === 3 ? parseInt(parts[2], 10) : NaN;
+      const updatedStudents = prev.students.map((s) => {
+        if (s.id === studentId) {
+          return {
+            ...s,
+            enrollmentDate: newDate,
+            paymentDueDay: !isNaN(dayNum) && dayNum >= 1 && dayNum <= 31 ? dayNum : s.paymentDueDay,
+          };
+        }
+        return s;
+      });
       const target = updatedStudents.find((s) => s.id === studentId);
       if (user && target) {
         cloudSaveStudent(user.uid, target);

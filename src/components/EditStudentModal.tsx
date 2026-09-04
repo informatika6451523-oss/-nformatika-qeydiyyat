@@ -50,6 +50,19 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
 
   if (!isOpen || !student) return null;
 
+  const handleEnrollmentDateChange = (newDate: string) => {
+    setEnrollmentDate(newDate);
+    if (newDate) {
+      const parts = newDate.split('-');
+      if (parts.length === 3) {
+        const day = parseInt(parts[2], 10);
+        if (!isNaN(day) && day >= 1 && day <= 31) {
+          setPaymentDueDay(day);
+        }
+      }
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -119,11 +132,11 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
               type="date"
               required
               value={enrollmentDate}
-              onChange={(e) => setEnrollmentDate(e.target.value)}
+              onChange={(e) => handleEnrollmentDateChange(e.target.value)}
               className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs cursor-pointer"
             />
-            <p className="mt-1 text-[11px] text-slate-500 font-medium">
-              Şagirdin kursa qəbul olunduğu ay və gün
+            <p className="mt-1 text-[11px] text-blue-600 font-medium flex items-center gap-1">
+              <span>✓</span> Ödəniş günü avtomatik olaraq <strong>hər ayın {paymentDueDay}-i</strong> təyin edildi
             </p>
           </div>
 
@@ -153,7 +166,7 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
               <select
                 value={paymentDueDay}
                 onChange={(e) => setPaymentDueDay(Number(e.target.value))}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-semibold text-slate-900 bg-white focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs cursor-pointer"
+                className="w-full rounded-xl border border-blue-200 bg-blue-50/40 px-3.5 py-2.5 text-sm font-semibold text-blue-950 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs cursor-pointer"
               >
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                   <option key={d} value={d}>

@@ -18,14 +18,29 @@ export const NewStudentModal: React.FC<NewStudentModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const initialToday = getTodayDateString();
+  const initialDay = parseInt(initialToday.split('-')[2], 10) || 1;
   const [name, setName] = useState('');
-  const [enrollmentDate, setEnrollmentDate] = useState(getTodayDateString());
-  const [paymentDueDay, setPaymentDueDay] = useState<number>(5);
+  const [enrollmentDate, setEnrollmentDate] = useState(initialToday);
+  const [paymentDueDay, setPaymentDueDay] = useState<number>(initialDay);
   const [phone, setPhone] = useState('');
   const [monthlyFee, setMonthlyFee] = useState<number | ''>(defaultFee || 80);
   const [notes, setNotes] = useState('');
 
   if (!isOpen) return null;
+
+  const handleEnrollmentDateChange = (newDate: string) => {
+    setEnrollmentDate(newDate);
+    if (newDate) {
+      const parts = newDate.split('-');
+      if (parts.length === 3) {
+        const day = parseInt(parts[2], 10);
+        if (!isNaN(day) && day >= 1 && day <= 31) {
+          setPaymentDueDay(day);
+        }
+      }
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,8 +57,10 @@ export const NewStudentModal: React.FC<NewStudentModalProps> = ({
     });
 
     setName('');
-    setEnrollmentDate(getTodayDateString());
-    setPaymentDueDay(5);
+    const resetDate = getTodayDateString();
+    const resetDay = parseInt(resetDate.split('-')[2], 10) || 1;
+    setEnrollmentDate(resetDate);
+    setPaymentDueDay(resetDay);
     setPhone('');
     setMonthlyFee(defaultFee || 80);
     setNotes('');
@@ -107,11 +124,11 @@ export const NewStudentModal: React.FC<NewStudentModalProps> = ({
               type="date"
               required
               value={enrollmentDate}
-              onChange={(e) => setEnrollmentDate(e.target.value)}
+              onChange={(e) => handleEnrollmentDateChange(e.target.value)}
               className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs cursor-pointer"
             />
-            <p className="mt-1 text-[11px] text-slate-400 font-medium">
-              Şagirdin adının qarşısında qeydiyyat tarixi kimi göstəriləcək
+            <p className="mt-1 text-[11px] text-blue-600 font-medium flex items-center gap-1">
+              <span>✓</span> Ödəniş günü avtomatik olaraq <strong>hər ayın {paymentDueDay}-i</strong> təyin edildi
             </p>
           </div>
 
@@ -141,7 +158,7 @@ export const NewStudentModal: React.FC<NewStudentModalProps> = ({
               <select
                 value={paymentDueDay}
                 onChange={(e) => setPaymentDueDay(Number(e.target.value))}
-                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-semibold text-slate-900 bg-white focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs cursor-pointer"
+                className="w-full rounded-xl border border-blue-200 bg-blue-50/40 px-3.5 py-2.5 text-sm font-semibold text-blue-950 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs cursor-pointer"
               >
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                   <option key={d} value={d}>

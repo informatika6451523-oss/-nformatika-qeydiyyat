@@ -75,9 +75,17 @@ export const QuickDateEditModal: React.FC<QuickDateEditModalProps> = ({
               className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100 shadow-xs cursor-pointer"
             />
             {date && (
-              <p className="mt-2 text-xs font-medium text-blue-700 bg-blue-50/80 rounded-lg p-2 border border-blue-100">
-                Seçilmiş tarix: <span className="font-bold">{formatFullDateAZ(date)}</span>
-              </p>
+              <div className="mt-2 space-y-1">
+                <p className="text-xs font-medium text-blue-700 bg-blue-50/80 rounded-lg p-2 border border-blue-100">
+                  Seçilmiş tarix: <span className="font-bold">{formatFullDateAZ(date)}</span>
+                </p>
+                {date.split('-')[2] && (
+                  <p className="text-[11px] font-medium text-emerald-700 bg-emerald-50/80 rounded-lg px-2 py-1.5 border border-emerald-100 flex items-center gap-1">
+                    <Check className="h-3 w-3 text-emerald-600 shrink-0" />
+                    Ödəniş günü avtomatik: <strong>Hər ayın {parseInt(date.split('-')[2], 10)}-i</strong>
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
