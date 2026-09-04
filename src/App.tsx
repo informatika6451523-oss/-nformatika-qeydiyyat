@@ -94,73 +94,19 @@ export default function App() {
     const initCloud = async () => {
       setSyncStatus('syncing');
       try {
-        const currentLocal = loadAppData();
         const cloudData = await fetchUserCloudData(user.uid);
 
-        if (!cloudData) {
-          // Cloud has no data yet -> upload all local groups, students, etc.
-          if (currentLocal.groups.length > 0 || currentLocal.students.length > 0) {
-            await uploadLocalDataToCloud(user.uid, currentLocal);
+        if (cloudData && (cloudData.groups.length > 0 || cloudData.students.length > 0)) {
+          // Cloud has real records - adopt cloud data immediately on all devices
+          if (isMounted) {
+            setData(cloudData);
+            saveAppData(cloudData);
           }
         } else {
-          // Cloud has data. Merge any local items that are not in cloud yet
-          let hasLocalOnlyItems = false;
-
-          const mergedGroups = [...cloudData.groups];
-          currentLocal.groups.forEach((lg) => {
-            if (!mergedGroups.some((cg) => cg.id === lg.id)) {
-              mergedGroups.push(lg);
-              hasLocalOnlyItems = true;
-            }
-          });
-
-          const mergedStudents = [...cloudData.students];
-          currentLocal.students.forEach((ls) => {
-            if (!mergedStudents.some((cs) => cs.id === ls.id)) {
-              mergedStudents.push(ls);
-              hasLocalOnlyItems = true;
-            }
-          });
-
-          const mergedPayments = [...cloudData.payments];
-          currentLocal.payments.forEach((lp) => {
-            if (!mergedPayments.some((cp) => cp.id === lp.id)) {
-              mergedPayments.push(lp);
-              hasLocalOnlyItems = true;
-            }
-          });
-
-          const mergedAttendance = [...cloudData.attendance];
-          currentLocal.attendance.forEach((la) => {
-            if (!mergedAttendance.some((ca) => ca.id === la.id)) {
-              mergedAttendance.push(la);
-              hasLocalOnlyItems = true;
-            }
-          });
-
-          const mergedNotes = [...cloudData.notes];
-          currentLocal.notes.forEach((ln) => {
-            if (!mergedNotes.some((cn) => cn.id === ln.id)) {
-              mergedNotes.push(ln);
-              hasLocalOnlyItems = true;
-            }
-          });
-
-          const mergedData: AppData = {
-            groups: mergedGroups,
-            students: mergedStudents,
-            payments: mergedPayments,
-            attendance: mergedAttendance,
-            notes: mergedNotes,
-          };
-
-          if (isMounted) {
-            setData(mergedData);
-            saveAppData(mergedData);
-          }
-
-          if (hasLocalOnlyItems) {
-            await uploadLocalDataToCloud(user.uid, mergedData);
+          // Cloud has no data yet - upload local data if real groups/students exist
+          const currentLocal = loadAppData();
+          if (currentLocal.groups.length > 0 || currentLocal.students.length > 0) {
+            await uploadLocalDataToCloud(user.uid, currentLocal);
           }
         }
 

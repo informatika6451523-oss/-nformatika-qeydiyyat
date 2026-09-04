@@ -249,11 +249,11 @@ export async function uploadLocalDataToCloud(userId: string, data: AppData): Pro
 }
 
 // Check if user has existing cloud data
-export async function checkHasCloudData(userId: string): Promise<boolean> {
+export async function checkHasCloudData(_userId?: string): Promise<boolean> {
   try {
     const [groupsSnap, studentsSnap] = await Promise.all([
-      getDocs(query(collection(db, 'groups'), where('userId', '==', userId))),
-      getDocs(query(collection(db, 'students'), where('userId', '==', userId))),
+      getDocs(collection(db, 'groups')),
+      getDocs(collection(db, 'students')),
     ]);
     return !groupsSnap.empty || !studentsSnap.empty;
   } catch (err) {
@@ -263,14 +263,14 @@ export async function checkHasCloudData(userId: string): Promise<boolean> {
 }
 
 // Fetch complete user data directly from cloud
-export async function fetchUserCloudData(userId: string): Promise<AppData | null> {
+export async function fetchUserCloudData(_userId?: string): Promise<AppData | null> {
   try {
     const [groupsSnap, studentsSnap, paymentsSnap, attSnap, notesSnap] = await Promise.all([
-      getDocs(query(collection(db, 'groups'), where('userId', '==', userId))),
-      getDocs(query(collection(db, 'students'), where('userId', '==', userId))),
-      getDocs(query(collection(db, 'payments'), where('userId', '==', userId))),
-      getDocs(query(collection(db, 'attendance'), where('userId', '==', userId))),
-      getDocs(query(collection(db, 'studentNotes'), where('userId', '==', userId))),
+      getDocs(collection(db, 'groups')),
+      getDocs(collection(db, 'students')),
+      getDocs(collection(db, 'payments')),
+      getDocs(collection(db, 'attendance')),
+      getDocs(collection(db, 'studentNotes')),
     ]);
 
     const hasAny =
@@ -297,51 +297,46 @@ export async function fetchUserCloudData(userId: string): Promise<AppData | null
 
 // Real-time listener for user data in cloud
 export function subscribeToUserCloudData(
-  userId: string,
+  _userId: string,
   onData: (cloudData: Partial<AppData>) => void
 ): () => void {
   const unsubscribers: Unsubscribe[] = [];
 
   // Groups
-  const qGroups = query(collection(db, 'groups'), where('userId', '==', userId));
   unsubscribers.push(
-    onSnapshot(qGroups, (snapshot) => {
+    onSnapshot(collection(db, 'groups'), (snapshot) => {
       const groups: Group[] = snapshot.docs.map((d) => d.data() as Group);
       onData({ groups });
     }, (err) => console.error('Qruplar dinləyicisi xətası:', err))
   );
 
   // Students
-  const qStudents = query(collection(db, 'students'), where('userId', '==', userId));
   unsubscribers.push(
-    onSnapshot(qStudents, (snapshot) => {
+    onSnapshot(collection(db, 'students'), (snapshot) => {
       const students: Student[] = snapshot.docs.map((d) => d.data() as Student);
       onData({ students });
     }, (err) => console.error('Şagirdlər dinləyicisi xətası:', err))
   );
 
   // Payments
-  const qPayments = query(collection(db, 'payments'), where('userId', '==', userId));
   unsubscribers.push(
-    onSnapshot(qPayments, (snapshot) => {
+    onSnapshot(collection(db, 'payments'), (snapshot) => {
       const payments: PaymentRecord[] = snapshot.docs.map((d) => d.data() as PaymentRecord);
       onData({ payments });
     }, (err) => console.error('Ödənişlər dinləyicisi xətası:', err))
   );
 
   // Attendance
-  const qAttendance = query(collection(db, 'attendance'), where('userId', '==', userId));
   unsubscribers.push(
-    onSnapshot(qAttendance, (snapshot) => {
+    onSnapshot(collection(db, 'attendance'), (snapshot) => {
       const attendance: AttendanceRecord[] = snapshot.docs.map((d) => d.data() as AttendanceRecord);
       onData({ attendance });
     }, (err) => console.error('Davamiyyət dinləyicisi xətası:', err))
   );
 
   // Notes
-  const qNotes = query(collection(db, 'studentNotes'), where('userId', '==', userId));
   unsubscribers.push(
-    onSnapshot(qNotes, (snapshot) => {
+    onSnapshot(collection(db, 'studentNotes'), (snapshot) => {
       const notes: StudentNote[] = snapshot.docs.map((d) => d.data() as StudentNote);
       onData({ notes });
     }, (err) => console.error('Qeydlər dinləyicisi xətası:', err))
