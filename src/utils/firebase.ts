@@ -1,0 +1,342 @@
+import { initializeApp } from 'firebase/app';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signOut,
+  onAuthStateChanged,
+  type User,
+} from 'firebase/auth';
+import {
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  query,
+  where,
+  onSnapshot,
+  getDocs,
+  writeBatch,
+  type Unsubscribe,
+} from 'firebase/firestore';
+import firebaseConfig from '../../firebase-applet-config.json';
+import { Group, Student, PaymentRecord, AttendanceRecord, StudentNote } from '../types';
+import { AppData } from './storage';
+
+// Initialize Firebase App
+export const app = initializeApp(firebaseConfig);
+
+// Initialize Auth
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+// Ensure user is always prompted to select their Google account / add another account
+googleProvider.setCustomParameters({
+  prompt: 'select_account',
+});
+
+// Initialize Firestore with configured database ID if available
+const databaseId = (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId;
+export const db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
+
+// Sign in helper with Google
+export async function loginWithGoogle(): Promise<User | null> {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    return result.user;
+  } catch (error: any) {
+    console.error('Google ilə giriş xətası:', error);
+    throw error;
+  }
+}
+
+// Sign in with Email and Password
+export async function loginWithEmailPassword(email: string, pass: string): Promise<User> {
+  try {
+    const result = await signInWithEmailAndPassword(auth, email.trim(), pass);
+    return result.user;
+  } catch (error: any) {
+    console.error('E-poçt ilə daxil olma xətası:', error);
+    throw error;
+  }
+}
+
+// Register with Email and Password
+export async function registerWithEmailPassword(email: string, pass: string): Promise<User> {
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email.trim(), pass);
+    return result.user;
+  } catch (error: any) {
+    console.error('E-poçt ilə qeydiyyat xətası:', error);
+    throw error;
+  }
+}
+
+// Password reset
+export async function sendPasswordReset(email: string): Promise<void> {
+  try {
+    await sendPasswordResetEmail(auth, email.trim());
+  } catch (error: any) {
+    console.error('Şifrə sıfırlama xətası:', error);
+    throw error;
+  }
+}
+
+// Sign out
+export async function logoutUser(): Promise<void> {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error('Çıxış xətası:', error);
+  }
+}
+
+// Cloud persistence functions
+export async function cloudSaveGroup(userId: string, group: Group): Promise<void> {
+  try {
+    await setDoc(doc(db, 'groups', group.id), {
+      ...group,
+      userId,
+    });
+  } catch (err) {
+    console.error('Qrupu buludda saxlamaq mümkün olmadı:', err);
+  }
+}
+
+export async function cloudDeleteGroup(groupId: string): Promise<void> {
+  try {
+    const batch = writeBatch(db);
+    batch.delete(doc(db, 'groups', groupId));
+
+    const studentsSnap = await getDocs(query(collection(db, 'students'), where('groupId', '==', groupId)));
+    studentsSnap.forEach((d) => batch.delete(d.ref));
+
+    const paymentsSnap = await getDocs(query(collection(db, 'payments'), where('groupId', '==', groupId)));
+    paymentsSnap.forEach((d) => batch.delete(d.ref));
+
+    const attSnap = await getDocs(query(collection(db, 'attendance'), where('groupId', '==', groupId)));
+    attSnap.forEach((d) => batch.delete(d.ref));
+
+    await batch.commit();
+  } catch (err) {
+    console.error('Qrupu buluddan silmək mümkün olmadı:', err);
+  }
+}
+
+export async function cloudSaveStudent(userId: string, student: Student): Promise<void> {
+  try {
+    await setDoc(doc(db, 'students', student.id), {
+      ...student,
+      userId,
+    });
+  } catch (err) {
+    console.error('Şagirdi buludda saxlamaq mümkün olmadı:', err);
+  }
+}
+
+export async function cloudDeleteStudent(studentId: string): Promise<void> {
+  try {
+    const batch = writeBatch(db);
+    batch.delete(doc(db, 'students', studentId));
+
+    const paymentsSnap = await getDocs(query(collection(db, 'payments'), where('studentId', '==', studentId)));
+    paymentsSnap.forEach((d) => batch.delete(d.ref));
+
+    const attSnap = await getDocs(query(collection(db, 'attendance'), where('studentId', '==', studentId)));
+    attSnap.forEach((d) => batch.delete(d.ref));
+
+    const notesSnap = await getDocs(query(collection(db, 'studentNotes'), where('studentId', '==', studentId)));
+    notesSnap.forEach((d) => batch.delete(d.ref));
+
+    await batch.commit();
+  } catch (err) {
+    console.error('Şagirdi buluddan silmək mümkün olmadı:', err);
+  }
+}
+
+export async function cloudSavePayment(userId: string, payment: PaymentRecord): Promise<void> {
+  try {
+    await setDoc(doc(db, 'payments', payment.id), {
+      ...payment,
+      userId,
+    });
+  } catch (err) {
+    console.error('Ödənişi buludda saxlamaq mümkün olmadı:', err);
+  }
+}
+
+export async function cloudDeletePayment(paymentId: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, 'payments', paymentId));
+  } catch (err) {
+    console.error('Ödənişi buluddan silmək mümkün olmadı:', err);
+  }
+}
+
+export async function cloudSaveAttendance(userId: string, record: AttendanceRecord): Promise<void> {
+  try {
+    await setDoc(doc(db, 'attendance', record.id), {
+      ...record,
+      userId,
+    });
+  } catch (err) {
+    console.error('Davamiyyəti buludda saxlamaq mümkün olmadı:', err);
+  }
+}
+
+export async function cloudSaveNote(userId: string, note: StudentNote): Promise<void> {
+  try {
+    await setDoc(doc(db, 'studentNotes', note.id), {
+      ...note,
+      userId,
+    });
+  } catch (err) {
+    console.error('Qeydi buludda saxlamaq mümkün olmadı:', err);
+  }
+}
+
+export async function cloudDeleteNote(noteId: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, 'studentNotes', noteId));
+  } catch (err) {
+    console.error('Qeydi buluddan silmək mümkün olmadı:', err);
+  }
+}
+
+// Batch sync all local data to cloud (used on first connect if cloud is empty)
+export async function uploadLocalDataToCloud(userId: string, data: AppData): Promise<void> {
+  try {
+    const batch = writeBatch(db);
+
+    data.groups.forEach((g) => {
+      batch.set(doc(db, 'groups', g.id), { ...g, userId });
+    });
+
+    data.students.forEach((s) => {
+      batch.set(doc(db, 'students', s.id), { ...s, userId });
+    });
+
+    data.payments.forEach((p) => {
+      batch.set(doc(db, 'payments', p.id), { ...p, userId });
+    });
+
+    data.attendance.forEach((a) => {
+      batch.set(doc(db, 'attendance', a.id), { ...a, userId });
+    });
+
+    data.notes.forEach((n) => {
+      batch.set(doc(db, 'studentNotes', n.id), { ...n, userId });
+    });
+
+    await batch.commit();
+  } catch (err) {
+    console.error('Yerli məlumatları buluda köçürmək mümkün olmadı:', err);
+  }
+}
+
+// Check if user has existing cloud data
+export async function checkHasCloudData(userId: string): Promise<boolean> {
+  try {
+    const [groupsSnap, studentsSnap] = await Promise.all([
+      getDocs(query(collection(db, 'groups'), where('userId', '==', userId))),
+      getDocs(query(collection(db, 'students'), where('userId', '==', userId))),
+    ]);
+    return !groupsSnap.empty || !studentsSnap.empty;
+  } catch (err) {
+    console.error('Bulud məlumatlarını yoxlamaq xətası:', err);
+    return false;
+  }
+}
+
+// Fetch complete user data directly from cloud
+export async function fetchUserCloudData(userId: string): Promise<AppData | null> {
+  try {
+    const [groupsSnap, studentsSnap, paymentsSnap, attSnap, notesSnap] = await Promise.all([
+      getDocs(query(collection(db, 'groups'), where('userId', '==', userId))),
+      getDocs(query(collection(db, 'students'), where('userId', '==', userId))),
+      getDocs(query(collection(db, 'payments'), where('userId', '==', userId))),
+      getDocs(query(collection(db, 'attendance'), where('userId', '==', userId))),
+      getDocs(query(collection(db, 'studentNotes'), where('userId', '==', userId))),
+    ]);
+
+    const hasAny =
+      !groupsSnap.empty ||
+      !studentsSnap.empty ||
+      !paymentsSnap.empty ||
+      !attSnap.empty ||
+      !notesSnap.empty;
+
+    if (!hasAny) return null;
+
+    return {
+      groups: groupsSnap.docs.map((d) => d.data() as Group),
+      students: studentsSnap.docs.map((d) => d.data() as Student),
+      payments: paymentsSnap.docs.map((d) => d.data() as PaymentRecord),
+      attendance: attSnap.docs.map((d) => d.data() as AttendanceRecord),
+      notes: notesSnap.docs.map((d) => d.data() as StudentNote),
+    };
+  } catch (err) {
+    console.error('Buluddan məlumatları oxumaq xətası:', err);
+    return null;
+  }
+}
+
+// Real-time listener for user data in cloud
+export function subscribeToUserCloudData(
+  userId: string,
+  onData: (cloudData: Partial<AppData>) => void
+): () => void {
+  const unsubscribers: Unsubscribe[] = [];
+
+  // Groups
+  const qGroups = query(collection(db, 'groups'), where('userId', '==', userId));
+  unsubscribers.push(
+    onSnapshot(qGroups, (snapshot) => {
+      const groups: Group[] = snapshot.docs.map((d) => d.data() as Group);
+      onData({ groups });
+    }, (err) => console.error('Qruplar dinləyicisi xətası:', err))
+  );
+
+  // Students
+  const qStudents = query(collection(db, 'students'), where('userId', '==', userId));
+  unsubscribers.push(
+    onSnapshot(qStudents, (snapshot) => {
+      const students: Student[] = snapshot.docs.map((d) => d.data() as Student);
+      onData({ students });
+    }, (err) => console.error('Şagirdlər dinləyicisi xətası:', err))
+  );
+
+  // Payments
+  const qPayments = query(collection(db, 'payments'), where('userId', '==', userId));
+  unsubscribers.push(
+    onSnapshot(qPayments, (snapshot) => {
+      const payments: PaymentRecord[] = snapshot.docs.map((d) => d.data() as PaymentRecord);
+      onData({ payments });
+    }, (err) => console.error('Ödənişlər dinləyicisi xətası:', err))
+  );
+
+  // Attendance
+  const qAttendance = query(collection(db, 'attendance'), where('userId', '==', userId));
+  unsubscribers.push(
+    onSnapshot(qAttendance, (snapshot) => {
+      const attendance: AttendanceRecord[] = snapshot.docs.map((d) => d.data() as AttendanceRecord);
+      onData({ attendance });
+    }, (err) => console.error('Davamiyyət dinləyicisi xətası:', err))
+  );
+
+  // Notes
+  const qNotes = query(collection(db, 'studentNotes'), where('userId', '==', userId));
+  unsubscribers.push(
+    onSnapshot(qNotes, (snapshot) => {
+      const notes: StudentNote[] = snapshot.docs.map((d) => d.data() as StudentNote);
+      onData({ notes });
+    }, (err) => console.error('Qeydlər dinləyicisi xətası:', err))
+  );
+
+  return () => {
+    unsubscribers.forEach((u) => u());
+  };
+}
