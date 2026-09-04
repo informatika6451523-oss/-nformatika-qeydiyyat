@@ -94,19 +94,73 @@ export default function App() {
     const initCloud = async () => {
       setSyncStatus('syncing');
       try {
-        const hasData = await checkHasCloudData(user.uid);
-        if (!hasData) {
-          // Upload local data to Firestore if cloud is brand new and local data has entries
-          const currentLocal = loadAppData();
+        const currentLocal = loadAppData();
+        const cloudData = await fetchUserCloudData(user.uid);
+
+        if (!cloudData) {
+          // Cloud has no data yet -> upload all local groups, students, etc.
           if (currentLocal.groups.length > 0 || currentLocal.students.length > 0) {
             await uploadLocalDataToCloud(user.uid, currentLocal);
           }
         } else {
-          // Cloud already has data (e.g. from spouse's phone) - load immediately
-          const cloudData = await fetchUserCloudData(user.uid);
-          if (cloudData && isMounted) {
-            setData(cloudData);
-            saveAppData(cloudData);
+          // Cloud has data. Merge any local items that are not in cloud yet
+          let hasLocalOnlyItems = false;
+
+          const mergedGroups = [...cloudData.groups];
+          currentLocal.groups.forEach((lg) => {
+            if (!mergedGroups.some((cg) => cg.id === lg.id)) {
+              mergedGroups.push(lg);
+              hasLocalOnlyItems = true;
+            }
+          });
+
+          const mergedStudents = [...cloudData.students];
+          currentLocal.students.forEach((ls) => {
+            if (!mergedStudents.some((cs) => cs.id === ls.id)) {
+              mergedStudents.push(ls);
+              hasLocalOnlyItems = true;
+            }
+          });
+
+          const mergedPayments = [...cloudData.payments];
+          currentLocal.payments.forEach((lp) => {
+            if (!mergedPayments.some((cp) => cp.id === lp.id)) {
+              mergedPayments.push(lp);
+              hasLocalOnlyItems = true;
+            }
+          });
+
+          const mergedAttendance = [...cloudData.attendance];
+          currentLocal.attendance.forEach((la) => {
+            if (!mergedAttendance.some((ca) => ca.id === la.id)) {
+              mergedAttendance.push(la);
+              hasLocalOnlyItems = true;
+            }
+          });
+
+          const mergedNotes = [...cloudData.notes];
+          currentLocal.notes.forEach((ln) => {
+            if (!mergedNotes.some((cn) => cn.id === ln.id)) {
+              mergedNotes.push(ln);
+              hasLocalOnlyItems = true;
+            }
+          });
+
+          const mergedData: AppData = {
+            groups: mergedGroups,
+            students: mergedStudents,
+            payments: mergedPayments,
+            attendance: mergedAttendance,
+            notes: mergedNotes,
+          };
+
+          if (isMounted) {
+            setData(mergedData);
+            saveAppData(mergedData);
+          }
+
+          if (hasLocalOnlyItems) {
+            await uploadLocalDataToCloud(user.uid, mergedData);
           }
         }
 
@@ -213,20 +267,28 @@ export default function App() {
       id: `student_${Date.now()}`,
       createdAt: getTodayDateString(),
     };
-    setData((prev) => ({
-      ...prev,
-      students: [...prev.students, newStudent],
-    }));
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        students: [...prev.students, newStudent],
+      };
+      saveAppData(updated);
+      return updated;
+    });
     if (user) {
       cloudSaveStudent(user.uid, newStudent);
     }
   };
 
   const handleUpdateStudent = (updatedStudent: Student) => {
-    setData((prev) => ({
-      ...prev,
-      students: prev.students.map((s) => (s.id === updatedStudent.id ? updatedStudent : s)),
-    }));
+    setData((prev) => {
+      const updated = {
+        ...prev,
+        students: prev.students.map((s) => (s.id === updatedStudent.id ? updatedStudent : s)),
+      };
+      saveAppData(updated);
+      return updated;
+    });
     if (user) {
       cloudSaveStudent(user.uid, updatedStudent);
     }

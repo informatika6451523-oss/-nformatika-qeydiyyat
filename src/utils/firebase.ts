@@ -94,13 +94,24 @@ export async function logoutUser(): Promise<void> {
   }
 }
 
+// Clean object helper: remove undefined keys so Firestore never rejects them
+export function cleanDoc<T extends Record<string, any>>(obj: T): any {
+  const result: any = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (val !== undefined) {
+      result[key] = val;
+    }
+  }
+  return result;
+}
+
 // Cloud persistence functions
 export async function cloudSaveGroup(userId: string, group: Group): Promise<void> {
   try {
-    await setDoc(doc(db, 'groups', group.id), {
+    await setDoc(doc(db, 'groups', group.id), cleanDoc({
       ...group,
       userId,
-    });
+    }));
   } catch (err) {
     console.error('Qrupu buludda saxlamaq mümkün olmadı:', err);
   }
@@ -128,10 +139,10 @@ export async function cloudDeleteGroup(groupId: string): Promise<void> {
 
 export async function cloudSaveStudent(userId: string, student: Student): Promise<void> {
   try {
-    await setDoc(doc(db, 'students', student.id), {
+    await setDoc(doc(db, 'students', student.id), cleanDoc({
       ...student,
       userId,
-    });
+    }));
   } catch (err) {
     console.error('Şagirdi buludda saxlamaq mümkün olmadı:', err);
   }
@@ -159,10 +170,10 @@ export async function cloudDeleteStudent(studentId: string): Promise<void> {
 
 export async function cloudSavePayment(userId: string, payment: PaymentRecord): Promise<void> {
   try {
-    await setDoc(doc(db, 'payments', payment.id), {
+    await setDoc(doc(db, 'payments', payment.id), cleanDoc({
       ...payment,
       userId,
-    });
+    }));
   } catch (err) {
     console.error('Ödənişi buludda saxlamaq mümkün olmadı:', err);
   }
@@ -178,10 +189,10 @@ export async function cloudDeletePayment(paymentId: string): Promise<void> {
 
 export async function cloudSaveAttendance(userId: string, record: AttendanceRecord): Promise<void> {
   try {
-    await setDoc(doc(db, 'attendance', record.id), {
+    await setDoc(doc(db, 'attendance', record.id), cleanDoc({
       ...record,
       userId,
-    });
+    }));
   } catch (err) {
     console.error('Davamiyyəti buludda saxlamaq mümkün olmadı:', err);
   }
@@ -189,10 +200,10 @@ export async function cloudSaveAttendance(userId: string, record: AttendanceReco
 
 export async function cloudSaveNote(userId: string, note: StudentNote): Promise<void> {
   try {
-    await setDoc(doc(db, 'studentNotes', note.id), {
+    await setDoc(doc(db, 'studentNotes', note.id), cleanDoc({
       ...note,
       userId,
-    });
+    }));
   } catch (err) {
     console.error('Qeydi buludda saxlamaq mümkün olmadı:', err);
   }
@@ -212,23 +223,23 @@ export async function uploadLocalDataToCloud(userId: string, data: AppData): Pro
     const batch = writeBatch(db);
 
     data.groups.forEach((g) => {
-      batch.set(doc(db, 'groups', g.id), { ...g, userId });
+      batch.set(doc(db, 'groups', g.id), cleanDoc({ ...g, userId }));
     });
 
     data.students.forEach((s) => {
-      batch.set(doc(db, 'students', s.id), { ...s, userId });
+      batch.set(doc(db, 'students', s.id), cleanDoc({ ...s, userId }));
     });
 
     data.payments.forEach((p) => {
-      batch.set(doc(db, 'payments', p.id), { ...p, userId });
+      batch.set(doc(db, 'payments', p.id), cleanDoc({ ...p, userId }));
     });
 
     data.attendance.forEach((a) => {
-      batch.set(doc(db, 'attendance', a.id), { ...a, userId });
+      batch.set(doc(db, 'attendance', a.id), cleanDoc({ ...a, userId }));
     });
 
     data.notes.forEach((n) => {
-      batch.set(doc(db, 'studentNotes', n.id), { ...n, userId });
+      batch.set(doc(db, 'studentNotes', n.id), cleanDoc({ ...n, userId }));
     });
 
     await batch.commit();

@@ -60,8 +60,8 @@ export const EditStudentModal: React.FC<EditStudentModalProps> = ({
       enrollmentDate: enrollmentDate || getTodayDateString(),
       monthlyFee: typeof monthlyFee === 'number' ? monthlyFee : 80,
       paymentDueDay: Number(paymentDueDay) || 5,
-      phone: phone.trim() || undefined,
-      notes: notes.trim() || undefined,
+      phone: phone.trim() || '',
+      notes: notes.trim() || '',
     });
     onClose();
   };

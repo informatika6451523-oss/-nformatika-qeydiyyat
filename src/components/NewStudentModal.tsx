@@ -36,9 +36,9 @@ export const NewStudentModal: React.FC<NewStudentModalProps> = ({
       name: name.trim(),
       enrollmentDate: enrollmentDate || getTodayDateString(),
       paymentDueDay: Number(paymentDueDay) || 5,
-      phone: phone.trim() || undefined,
+      phone: phone.trim() || '',
       monthlyFee: typeof monthlyFee === 'number' ? monthlyFee : (defaultFee || 80),
-      notes: notes.trim() || undefined,
+      notes: notes.trim() || '',
     });
 
     setName('');
